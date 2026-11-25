@@ -300,30 +300,39 @@ lathe("DECO_1", (-LATHE_X - 3.8, 4.4, 0), 0.0, dynamic=False)
 lathe("DECO_2", (LATHE_X + 3.8, 4.4, 0), math.pi, dynamic=False)
 
 # =============================================================== UR10e + capteur d'effort + double pince SCHUNK
-def finger(name, side):
-    """Doigt de pince parallèle (repère local de la pince : x = approche, z = axe des doigts) : glissière motorisée,
-    TouchSensor de contact au bout du doigt (l'effort de serrage est lu sur le moteur du doigt)."""
-    zs = 0.045 * side
-    pad_z = -0.009 * side
-    fl = DG.FINGER_L
-    shapes = render([box((fl, 0.03, 0.012), app("0.55 0.57 0.6", 0.35, 0.85), (fl / 2, 0, 0)),
-                     box((0.02, 0.026, 0.006), app("0.15 0.15 0.16", 0.7, 0), (0.045, 0, pad_z)),
-                     box((0.03, 0.034, 0.02), SCHUNK_B, (-0.005, 0, side * 0.004))])
-    fcol = [("box", (0.02, 0.026, 0.006), (0.045, 0, pad_z), None), ("box", (fl, 0.03, 0.012), (fl / 2, 0, 0), None)]
+MESH = "../protos/meshes/egk40/%s.obj"
+EGK_ROT = (0, 0, 1, -math.pi / 2)                  # EGK axes (y = approach, z = jaws) -> gripper local frame
+EGK_ALU = app("0.80 0.82 0.85", 0.5, 0.45)         # housing: natural anodized aluminium
+EGK_JAW = app("0.06 0.06 0.065", 0.45, 0.4)        # base jaws (black, from the STEP colours)
+PLATE = app("0.85 0.86 0.88", 0.3, 0.6)
+FINGER_COL = app("0.55 0.57 0.6", 0.35, 0.85)
+
+
+def mesh(name, appearance):
+    return 'Pose { rotation %s children [ Shape { appearance %s geometry Mesh { url "%s" } } ] }' % (
+        f(EGK_ROT), appearance, MESH % name)
+
+
+def finger(name, side, g):
+    """Base jaw of the SCHUNK EGK 40 (STEP mesh) on a motorized slide (6 mm stroke, 140 N) + custom finger with a
+    contact sensor (TouchSensor); the clamping force is read on the jaw motor."""
+    geo = DG.finger_geometry(g, side)
+    shapes = [mesh("jaw_pos" if side > 0 else "jaw_neg", EGK_JAW)]
+    shapes += [box(d, app("0.15 0.15 0.16", 0.7, 0) if k == "pad" else FINGER_COL, p_) for _, d, p_, k in geo]
+    fcol = [("box", d, p_, None) for _, d, p_, k in geo if k != "block"]
     return """SliderJoint {
           jointParameters JointParameters { axis 0 0 %d }
-          device [ LinearMotor { name "%s" maxVelocity 0.12 maxForce 140 minPosition -0.001 maxPosition 0.04 }
+          device [ LinearMotor { name "%s" maxVelocity 0.03 maxForce 140 minPosition -0.0005 maxPosition %g }
                    PositionSensor { name "%s_pos" } ]
           endPoint TouchSensor {
-            translation %g 0 %g
             name "%s_effort"
             type "bumper"
             contactMaterial "doigt"
             children [ %s ]
             boundingObject %s
-            physics Physics { density -1 mass 0.06 }
+            physics Physics { density -1 mass 0.05 }
           }
-        }""" % (-side, name, name, DG.FINGER_X0, zs, name, shapes, bo(fcol))
+        }""" % (-side, name, DG.JAW_STROKE, name, name, render(shapes), bo(fcol))
 
 
 def tri_prism(p0, p1, p2, z0, z1, appearance):
@@ -348,8 +357,9 @@ for g in (1, 2):
     leg = (fc[0] - 0.007 * d[0], fc[1] - 0.007 * d[1], 0)                           # aile du support (ép. 14 mm)
     G.append(box((0.014, DG.BEND_LEN + 0.012, 0.11), BRK, leg, (0, 0, 1, th)))
     gcol.append(("box", (0.014, DG.BEND_LEN + 0.012, 0.11), leg, (0, 0, 1, th)))
-    body = DG.local_to_slot(g, (DG.BODY_L / 2, 0, 0))
-    gcol.append(("box", (DG.BODY_L, 0.065, 0.09), body, (0, 0, 1, th)))
+    lo, hi = DG.HOUSING
+    body = DG.local_to_slot(g, tuple((lo[i] + hi[i]) / 2 for i in range(3)))
+    gcol.append(("box", tuple(hi[i] - lo[i] for i in range(3)), body, (0, 0, 1, th)))
 gx = DG.BEND_LEN * S45
 for zz in (-0.05, 0.044):                                                           # goussets latéraux
     G.append(tri_prism((-gx, DG.PLATE_TOP), (gx, DG.PLATE_TOP), (0, DG.APEX_Y), zz, zz + 0.006, BRK))
@@ -357,15 +367,11 @@ G.append(cyl(0.007, 0.16, app("0.15 0.4 0.85", 0.4, 0), (0.0, 0.075, 0.062), (0,
 
 
 def gripper_unit(g):
-    """Une pince parallèle (type SCHUNK EGK) dans son repère local (x = approche) + doigts + TCP."""
-    u = [box((DG.BODY_L, 0.065, 0.09), SCHUNK, (DG.BODY_L / 2, 0, 0)),
-         box((0.02, 0.07, 0.095), SCHUNK_B, (0.005, 0, 0)),
-         box((0.04, 0.002, 0.03), app("0.1 0.3 0.75", 0.4, 0.2), (0.06, -0.0335, 0)),
-         box((0.01, 0.05, 0.08), SCHUNK_B, (DG.BODY_L - 0.005, 0, 0)),
-         cyl(0.006, 0.01, app("0.1 0.9 0.2", emissive="0 0.6 0"), (0.03, -0.034, 0.03), (1, 0, 0, math.pi / 2))]
+    """SCHUNK EGK 40-MB-M-B (STEP meshes) in its local frame (x = approach) + fingers + TCP."""
+    u = [mesh("housing", EGK_ALU), mesh("plate_1", PLATE), mesh("plate_2", PLATE)]
     tcp = "DEF TCP%d Pose { translation %g 0 0 rotation 0.707107 0 0.707107 3.14159 }" % (g, DG.TCP_X)
     return "Pose { translation %s rotation 0 0 1 %.6f children [ %s %s %s %s ] }" % (
-        f(DG.FACE[g]), DG.THETA[g], render(u), finger("g%d_doigt_a" % g, 1), finger("g%d_doigt_b" % g, -1), tcp)
+        f(DG.FACE[g]), DG.THETA[g], " ".join(u), finger("g%d_doigt_a" % g, 1, g), finger("g%d_doigt_b" % g, -1, g), tcp)
 
 
 gripper = """Pose {

@@ -110,7 +110,8 @@ FINGERS = {}                                      # toolSlot frame, open fingers
 for g in (1, 2):
     pts = []
     for side in (1, -1):
-        pts += box_shape((DG.FINGER_L, 0.03, 0.012), (DG.FINGER_X0 + DG.FINGER_L / 2, 0, 0.045 * side))
+        for _, size, pos, kind in DG.finger_geometry(g, side):
+            pts += box_shape(size, pos)
     th = DG.THETA[g]
     R = rotm((0, 0, 1, th))
     fc = DG.FACE[g]

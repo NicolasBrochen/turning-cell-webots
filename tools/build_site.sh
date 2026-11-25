@@ -35,12 +35,15 @@ WBT
   grep -E "COLLISION|gripped|contact|failed|Crates exchanged|Traceback|Error" "$ROOT/site/.build.log" | tail -n 40 || true
 fi
 rm -f "$ROOT/site/.build.log"
+# meshes referenced by the animation (SCHUNK EGK 40, from the STEP file): url "meshes/<name>.obj"
+rm -rf "$ROOT/site/meshes"; mkdir -p "$ROOT/site/meshes"
+cp "$ROOT"/protos/meshes/egk40/*.obj "$ROOT/site/meshes/"
 python3 - "$ROOT/site/turning_cell.html" <<'PY'
 import re, sys
 p = sys.argv[1]
 s = open(p, encoding="utf-8").read()
 desc = ("<p><strong>Robotic turning cell</strong> (Webots R2025a): two CNC lathes facing each other, tended by a "
-        "UR10e with a dual SCHUNK-type gripper on a 90° bent bracket and a 6-axis force/torque sensor.<br><br>"
+        "UR10e with a dual SCHUNK EGK 40 gripper on a 90° bent bracket and a 6-axis force/torque sensor.<br><br>"
         "Blanks from a crate, unload + load of each lathe in a single visit (dual gripper), force-guarded seating "
         "in the chuck, turning cycle, finished parts to the output crate, crate exchange by an operator with laser "
         "scanners slowing then stopping the robot.<br>"

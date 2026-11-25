@@ -3,8 +3,8 @@
 # Cellule de tournage robotisée — Webots R2025a
 
 Deux tours CNC face à face, à 1,6 m l'un de l'autre, servis par un **Universal Robots UR10e**. Le robot porte une
-**double pince de type SCHUNK** (deux pinces parallèles sur un support coudé à 90°, chacune à 45° de l'axe de la bride)
-montée derrière un **capteur d'effort 6 axes**. Les bruts arrivent dans une caisse,
+**double pince SCHUNK EGK 40** (deux pinces parallèles électriques, modèle CAO réel de SCHUNK, sur un support coudé à
+90°, chacune à 45° de l'axe de la bride) montée derrière un **capteur d'effort 6 axes**. Les bruts arrivent dans une caisse,
 et les pièces tournées repartent dans une seconde caisse. Quand la caisse de bruts est vide, un opérateur vient échanger
 les caisses. Le côté avant, ouvert et collaboratif, est surveillé par deux scrutateurs laser (surveillance de vitesse
 et de distance).
@@ -62,7 +62,7 @@ webots worlds/tournage.wbt
 | Élément | Source |
 |---|---|
 | Robot | `UR10e` (bibliothèque officielle Webots, Universal Robots) sur socle acier |
-| Double pince | Construite pour ce projet : capteur d'effort 6 axes, plaque d'adaptation alu, support coudé à 90° avec goussets, 2 pinces parallèles (corps type SCHUNK EGK) à ±45° de l'axe de la bride, doigts motorisés sur glissières, patins avec capteurs de contact, LED d'état. SCHUNK ne fournit pas de modèle Webots. Géométrie dans [`dual_gripper.py`](controllers/ur_tending/dual_gripper.py) |
+| Double pince | 2 × **SCHUNK EGK 40-MB-M-B** (ID 1491762) : corps et mors de base issus du fichier STEP SCHUNK ([`cad/`](cad/), converti en OBJ par [`tools/step_to_obj.py`](tools/step_to_obj.py)), mors sur glissières motorisées avec la course réelle (6 mm par mors) et l'effort de serrage réel (140 N). Construits pour ce projet : capteur d'effort 6 axes, plaque d'adaptation, support coudé à 90° avec goussets (pinces à ±45° de l'axe de la bride), doigts sur mesure (pince 1 pour les bruts Ø50, pince 2 pour l'extrémité Ø30 des pièces finies) avec patins et capteurs de contact. Géométrie dans [`dual_gripper.py`](controllers/ur_tending/dual_gripper.py) |
 | Tours CNC | Construits pour ce projet (aucun tour dans la bibliothèque Webots) : banc fonte, carénage, porte coulissante automatique vitrée, poupée, mandrin 3 mors (mors mobiles), banc incliné à 45°, tourelle 8 postes avec plaquette, arrosage, pupitre CNC, colonne lumineuse, convoyeur et bac à copeaux |
 | Caisses | Construites pour ce projet : bacs plastique 400×600×180 (type KLT) avec nervures, poignées et 12 alvéoles |
 | Pièces | Brut Ø50 × 90 mm → arbre étagé Ø40 / Ø30 (la zone serrée reste brute) |
@@ -112,7 +112,8 @@ pinces, doigts) ont des **volumes de collision** (`boundingObject`) : un contact
   mesure la distance entre le robot (pièces portées comprises) et chaque volume de collision (exportés par
   `tools/gen_world.py` dans `worlds/obstacles.json`), y compris les collisions de l'outil avec le bras. C'est avec lui
   qu'ont été choisies l'orientation de la pince dans les tours et les configurations de départ. Résultat actuel :
-  aucune collision, la plus petite distance est celle des doigts près des parois de caisse (> 7 mm).
+  aucune collision ; hors pièce posée dans la caisse, la plus petite distance est de 7 mm (outil et avant-bras pendant
+  la mise en route), 9 mm entre le support et les parois de caisse.
 
 La base du UR10e est orientée pour que sa position zéro (bras tendu) pointe vers l'arrière libre, et la mise en route
 replie le bras avant de tourner la base : rien n'est balayé sur le chemin de la position de repos.
@@ -137,6 +138,7 @@ controllers/
   ur_tending/ur_tending.py      UR10e : mouvements articulaires / linéaires / gardés en effort, pinces, transport des pièces
   ur_tending/ur10e_kin.py       cinématique exacte du UR10e (relevée dans UR10e.proto) + IK numérique 6 ddl, sans dépendance
   ur_tending/dual_gripper.py    géométrie de la double pince coudée (TCP), orientation de la base du robot
+tools/step_to_obj.py            assemblage STEP -> maillages OBJ (OpenCASCADE), utilisé pour la SCHUNK EGK 40
 tools/gen_world.py              génère worlds/tournage.wbt (+ worlds/obstacles.json, volumes de collision)
 tools/check_collisions.py       vérification hors ligne des collisions sur tout le cycle du robot
 tools/sim_check.sh              simulation Webots sans rendu + rapport de collisions
@@ -167,3 +169,8 @@ Cinématique :
 - Le tournage est représenté, pas calculé : la surépaisseur raccourcit au fil de l'avance de l'outil, et la vitesse de
   broche est ralentie pour rester visible.
 - À l'échange des caisses, les pièces tournées sont réutilisées comme nouveaux bruts (réserve fixe de 16 pièces).
+
+## Crédits
+
+Modèle CAO SCHUNK EGK 40-MB-M-B : © SCHUNK GmbH & Co. KG, diffusé par CADENAS sous licence CC BY-ND 4.0 (`cad/`
+contient le fichier STEP d'origine, `protos/meshes/egk40/` la même géométrie convertie en OBJ, sans modification).

@@ -24,10 +24,35 @@ BEND_LEN = 0.10                    # length of each bracket leg (in the bracket 
 APEX_Y = PLATE_TOP + BEND_LEN * S  # bend line of the bracket, on the flange axis
 THETA = {1: math.pi / 4, 2: 3 * math.pi / 4}                      # gripper local x = Rz(theta) x
 FACE = {g: ((1 if g == 1 else -1) * BEND_LEN / 2 * S, APEX_Y - BEND_LEN / 2 * S, 0.0) for g in (1, 2)}
-BODY_L = 0.12                      # gripper body length along the approach (from the bracket face)
-FINGER_X0 = BODY_L                 # finger base (gripper local x)
-TCP_X = BODY_L + 0.045             # TCP = middle of the finger pads (gripper local x)
-FINGER_L = 0.057                   # finger length: tip 12 mm beyond the TCP
+# SCHUNK EGK 40-MB-M-B (STEP from SCHUNK, meshes in protos/meshes/egk40): housing from the mounting face (x = 0) to
+# 82.7 mm, base jaws up to 83.5 mm, jaw stroke 6 mm each, gripping force 140 N. Gripper local frame: x = approach,
+# z = jaw motion (EGK z), y = -EGK x.
+BODY_L = 0.0835                    # mounting face -> top of the base jaws
+HOUSING = ((0.0, -0.034, -0.0764), (0.0827, 0.034, 0.0585))       # housing bounding box (gripper local frame)
+JAW_STROKE = 0.006
+JAW_Z0 = 0.0066                    # inner face of the base jaws, open (|z|)
+GRIP_R = {1: 0.025, 2: 0.015}      # gripper 1 always takes blanks (Ø50), gripper 2 finished parts (Ø30 end)
+PAD_GAP = 0.003                    # radial clearance of the open pads
+FINGER_X0 = BODY_L + 0.012         # custom fingers: 12 mm adapter block on the base jaw, then the finger plate
+TCP_X = 0.165                      # TCP = middle of the finger pads (gripper local x)
+FINGER_END = TCP_X + 0.012         # finger tip, 12 mm beyond the TCP
+FINGER_T = 0.010                   # finger plate thickness (along z)
+
+
+def finger_plate_z(g):
+    """|z| of the finger plate centre (open): pad inner face at GRIP_R + PAD_GAP, pad 4 mm, plate behind it."""
+    return GRIP_R[g] + PAD_GAP + 0.004 + FINGER_T / 2
+
+
+def finger_geometry(g, side):
+    """Custom finger on a base jaw, open position (gripper local frame): adapter block, plate, pad."""
+    zc = finger_plate_z(g)
+    z_in = GRIP_R[g] + PAD_GAP                       # pad inner face (open)
+    blk_z0, blk_z1 = JAW_Z0, max(0.0349, zc + FINGER_T / 2)
+    L = FINGER_END - FINGER_X0
+    return [("box", (0.012, 0.04, blk_z1 - blk_z0), (BODY_L + 0.006, 0, side * (blk_z0 + blk_z1) / 2), "block"),
+            ("box", (L, 0.03, FINGER_T), (FINGER_X0 + L / 2, 0, side * zc), "plate"),
+            ("box", (0.02, 0.026, 0.004), (TCP_X, 0, side * (z_in + 0.002)), "pad")]
 
 
 def direction(g):

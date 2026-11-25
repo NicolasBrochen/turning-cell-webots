@@ -4,7 +4,7 @@
 #   docs/turning_cell.mp4     one full sequence, 4x speed (overview)
 #   docs/lathe_service.mp4    close-up: dual-gripper unload + load of lathe A
 #   docs/crate_exchange.mp4   operator exchanging the crates, scanners slowing then stopping the robot
-#   docs/cell.jpg, docs/gripper.jpg, docs/operator.jpg   stills
+#   docs/cell.jpg, docs/gripper.jpg (close-up of the SCHUNK dual gripper), docs/operator.jpg   stills
 #   docs/turning_cell.gif     animated preview for the README
 #   tools/build_media.sh
 set -eu
@@ -32,13 +32,14 @@ cat > "$tmpd/a.json" <<JSON
 JSON
 cat > "$tmpd/b.json" <<JSON
 {"width": 1280, "height": 720, "clips": [
+  {"file": "$T/zoom.mp4", "start": 54.0, "end": 59.5, "accel": 1, "position": [-0.85, 1.55, 1.35], "look_at": [-0.22, 0.85, 0.98]},
   {"file": "$T/prise.mp4", "start": 60.0, "end": 86.0, "accel": 1, "position": [-0.15, 0.75, 1.75], "look_at": [-1.15, -0.3, 1.1]},
   {"file": "$T/bande.mp4", "start": 225.0, "end": 243.0, "accel": 1, "position": [2.3, 3.4, 2.2], "look_at": [0.0, 1.1, 0.8]}
 ]}
 JSON
 run "$tmpd/a.json"
 run "$tmpd/b.json"
-for f in cycle.mp4 prise.mp4 bande.mp4; do
+for f in cycle.mp4 zoom.mp4 prise.mp4 bande.mp4; do
   [ -s "$tmpd/$f" ] || { tail -30 "$tmpd/webots.log"; echo "✗ $f non enregistré"; exit 1; }
 done
 # contrôle qualité : sous Windows, la capture vidéo devient noire si la fenêtre de Webots est masquée
@@ -65,7 +66,7 @@ enc "$tmpd/cycle.mp4" "$D/turning_cell.mp4"
 enc "$tmpd/prise.mp4" "$D/lathe_service.mp4"
 enc "$tmpd/bande.mp4" "$D/crate_exchange.mp4"
 ffmpeg -loglevel error -y -ss 4.5 -i "$D/turning_cell.mp4" -frames:v 1 -q:v 3 "$D/cell.jpg"
-ffmpeg -loglevel error -y -ss 7.5 -i "$D/lathe_service.mp4" -frames:v 1 -q:v 3 "$D/gripper.jpg"
+ffmpeg -loglevel error -y -ss ${ZOOM_T:-2.5} -i "$tmpd/zoom.mp4" -frames:v 1 -q:v 3 "$D/gripper.jpg"
 ffmpeg -loglevel error -y -ss 8 -i "$D/crate_exchange.mp4" -frames:v 1 -q:v 3 "$D/operator.jpg"
 # aperçu animé : 24 s du cycle accéléré, 10 i/s, 640 px
 ffmpeg -loglevel error -y -ss 9 -t 20 -i "$D/turning_cell.mp4" -vf "fps=10,scale=640:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle" "$D/turning_cell.gif"

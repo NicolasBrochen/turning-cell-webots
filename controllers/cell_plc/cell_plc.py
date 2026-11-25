@@ -59,12 +59,14 @@ GAIT_DZ = [-0.02, 0.04, 0.08, -0.03, -0.02, 0.04, 0.08, -0.03]
 # the flange and the wrist stay on the opposite side
 LATHE_M = [-0.5, 0.0, 0.866]       # idle gripper up and towards the back of the machine (120°)
 OUT_DX, OUT_DZ = 0.32, 0.12        # retreat point in front of the door (lathe frame, from the façade / spindle height)
+CRATE_M_ANGLE = math.radians(-25)  # idle gripper at the crates: sideways (±x, away from the centre line), 25° backwards
 
-# joint seeds per lathe and gripper (given with the cell axes, converted with the orientation of the robot base): elbow up, wrist away from the singularity. Both grippers
-# share the flange pose, so switching gripper = half a turn of wrist 3 (found with tools/check_collisions.py).
+# joint seeds per lathe / crate and gripper, given with the cell axes and converted with the orientation of the robot
+# base (found with tools/check_collisions.py). Both grippers share the flange pose: switching gripper = half a turn
+# of wrist 3.
 SEEDS = {("A", 1): [2.884, -0.56, 1.082, -1.835, 0.686, 0.356], ("A", 2): [2.884, -0.56, 1.082, -1.835, 0.686, -2.786],
          ("B", 1): [-0.258, -0.56, 1.082, -1.835, 0.686, 0.356], ("B", 2): [-0.258, -0.56, 1.082, -1.835, 0.686, -2.786]}
-CRATE_SEEDS = {1: [1.299, -1.478, 1.594, -0.116, 1.299, -1.571], 2: [1.299, -1.478, 1.594, -0.116, 1.299, 1.571]}
+CRATE_SEEDS = {1: [-1.203, -1.839, -1.582, -1.36, 2.354, -0.097], 2: [-1.203, -1.839, -1.582, -1.36, 2.354, 3.045]}
 SEEDS = {k: base_q(v) for k, v in SEEDS.items()}
 CRATE_SEEDS = {k: base_q(v) for k, v in CRATE_SEEDS.items()}
 
@@ -322,9 +324,11 @@ class CellPLC(Supervisor):
     # ------------------------------------------------------------------ robot jobs (world frame)
     def crate_frame(self, g, c):
         a = [0, 0, -1]
-        m = [c[0], c[1], 0.0]           # idle gripper pointing away from the base: flange and wrist on the robot side
-        k = math.hypot(m[0], m[1])
-        return a, tool_x(g, a, [m[0] / k, m[1] / k, 0.0])
+        # idle gripper pointing sideways, away from the cell centre line: the jaw axis (long side of the EGK housing)
+        # then runs along the 600 mm side of the crate, clear of the crate walls
+        sx = 1.0 if c[0] > 0 else -1.0
+        m = [sx * math.cos(CRATE_M_ANGLE), math.sin(CRATE_M_ANGLE), 0.0]
+        return a, tool_x(g, a, m)
 
     def crate_steps_pick(self, g, crate, i, part):
         c = self.cell_xyz(crate, i)

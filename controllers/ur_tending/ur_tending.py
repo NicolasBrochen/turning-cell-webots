@@ -22,12 +22,12 @@ import math
 
 from controller import Supervisor
 
-from dual_gripper import base_q, tcp_matrix
+from dual_gripper import JAW_STROKE, base_q, tcp_matrix
 from ur10e_kin import fk, ik, pose, wrap_near
 
 JOINTS = ["shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint", "wrist_1_joint", "wrist_2_joint", "wrist_3_joint"]
 TCP = {1: tcp_matrix(1), 2: tcp_matrix(2)}      # bent dual gripper (dual_gripper.py)
-Q_HOME = base_q([1.299, -1.478, 1.594, -0.116, 1.299, -1.571])  # above the crate table, elbow up, wrist 2 at 74°
+Q_HOME = base_q([-1.203, -1.839, -1.582, -1.36, 2.354, -0.097])  # above the crate table (same as the crate seed of gripper 1)
 Q_FOLD = [-1.57, 2.0, 0.4, -1.57, -1.571]                 # compact pose (joints 2..6) for the start-up rotation
 
 
@@ -38,7 +38,7 @@ def start_path(pan0):
 V_JOINT = 1.4           # rad/s (average, quintic profile)
 K_CONTACT = 40000.0     # N/m: stiffness of the emulated contact seen by the F/T sensor
 GRIP_MIN_F = 50.0       # N per finger to accept a grip
-FINGER_CLOSED = 0.04
+FINGER_CLOSED = JAW_STROKE       # EGK 40: 6 mm per jaw
 
 
 def quintic(s):
@@ -104,7 +104,7 @@ class Tending(Supervisor):
                 ts.enable(self.dt_ms)
                 ps = self.getDevice(name + "_pos")
                 ps.enable(self.dt_ms)
-                mot.setVelocity(0.12)
+                mot.setVelocity(0.03)
                 mot.enableForceFeedback(self.dt_ms)
                 self.fingers[(g, side)] = (mot, ts, ps)
         self.tx = self.getDevice("robot_tx")

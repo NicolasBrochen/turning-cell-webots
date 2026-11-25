@@ -3,8 +3,8 @@
 # Robotic turning cell — Webots R2025a
 
 Two CNC lathes face each other 1.6 m apart, tended by a **Universal Robots UR10e**. The robot carries a **dual
-SCHUNK-type gripper** (two parallel grippers on a 90° bent bracket, each at 45° from the flange axis) behind a
-**6-axis force/torque sensor**. Blanks come from a crate, and the
+SCHUNK EGK 40 gripper** (two electric parallel grippers, real SCHUNK CAD model, on a 90° bent bracket, each at 45°
+from the flange axis) behind a **6-axis force/torque sensor**. Blanks come from a crate, and the
 turned parts go to a second crate. When the blank crate is empty, an operator walks in to swap the crates. The open,
 collaborative front side is guarded by two laser scanners (speed and separation monitoring).
 
@@ -60,7 +60,7 @@ webots worlds/tournage.wbt
 | Item | Source |
 |---|---|
 | Robot | `UR10e` (official Webots library, Universal Robots) on a steel pedestal |
-| Dual gripper | Built for this project: 6-axis F/T sensor, aluminium adapter plate, 90° bent bracket with side gussets, 2 parallel grippers (SCHUNK EGK-style body) at ±45° from the flange axis, motorized fingers on slide joints, pads with contact sensors, status LEDs. SCHUNK provides no Webots model. Geometry in [`dual_gripper.py`](controllers/ur_tending/dual_gripper.py) |
+| Dual gripper | 2 × **SCHUNK EGK 40-MB-M-B** (ID 1491762): housing and base jaws from the SCHUNK STEP file ([`cad/`](cad/), converted to OBJ by [`tools/step_to_obj.py`](tools/step_to_obj.py)), jaws on motorized slide joints with the real stroke (6 mm per jaw) and gripping force (140 N). Built for this project: 6-axis F/T sensor, adapter plate, 90° bent bracket with side gussets (grippers at ±45° from the flange axis), custom fingers (gripper 1 for the Ø50 blanks, gripper 2 for the Ø30 end of the finished parts) with pads and contact sensors. Geometry in [`dual_gripper.py`](controllers/ur_tending/dual_gripper.py) |
 | CNC lathes | Built for this project (no lathe exists in the Webots library): cast bed, enclosure, automatic sliding door with window, headstock, 3-jaw chuck (moving jaws), 45° slant bed, 8-station turret with insert, coolant, CNC control panel, stack light, chip conveyor and bin |
 | Crates | Built for this project: 400×600×180 plastic crates (KLT type) with ribs, handles and 12-cell dividers |
 | Parts | Ø50 × 90 mm blank → stepped shaft Ø40 / Ø30 (the clamped zone stays raw) |
@@ -73,7 +73,7 @@ Static geometry is merged per material into `IndexedFaceSet` nodes (same method 
 
 | Sensor | Implementation | Use |
 |---|---|---|
-| **Fingertip force sensors** (×4) | Webots `TouchSensor` (contact) on each finger + finger drive force feedback (`LinearMotor.getForceFeedback`) | Grip check: both fingers in contact with ≥ 50 N, otherwise "grip failed" and the fingers re-open |
+| **Fingertip force sensors** (×4) | Webots `TouchSensor` (contact) on each finger + jaw drive force feedback (`LinearMotor.getForceFeedback`) | Grip check: both fingers in contact with ≥ 50 N, otherwise "grip failed" and the fingers re-open |
 | **Wrist 6-axis F/T sensor** | Emulated by the robot controller (contact stiffness 40 kN/m beyond the contact point) | Force-guarded moves: seating the blank against the chuck stop (40 N), setting the part down in the crate (20 N) |
 | **Joint encoders** | `PositionSensor` on the 6 axes and the 4 fingers | Kinematics, carried-part tracking, finger stroke |
 | **Laser scanners** (×2) | Fans of 31 distance beams at 0.18 m height | Warning field → 25 % speed, protective field → protective stop, automatic restart |
@@ -107,8 +107,8 @@ fingers) have **collision volumes** (`boundingObject`), so a contact is a real c
   replays the robot cycle with the same IK and the same job steps as the controllers, measures the clearance between
   the robot (with the carried parts) and every collision volume (exported by `tools/gen_world.py` to
   `worlds/obstacles.json`), including self-collisions of the tool against the arm. This is how the gripper orientation
-  in the lathes and the joint seeds were chosen. Current result: no collision, smallest clearances are the fingers near
-  the crate walls (> 7 mm).
+  in the lathes and the joint seeds were chosen. Current result: no collision; apart from the part set down in the crate,
+  the smallest clearance is 7 mm (tool and forearm during the start-up), 9 mm between the bracket and the crate walls.
 
 The UR10e base is turned so that its zero pose (arm stretched out) points to the free back side, and the start-up
 folds the arm before turning the base: nothing is swept on the way to the home position.
@@ -133,6 +133,7 @@ controllers/
   ur_tending/ur_tending.py      UR10e: joint / linear / force-guarded moves, grippers, part transport
   ur_tending/ur10e_kin.py       exact UR10e kinematics (from UR10e.proto) + 6-DOF numerical IK, no dependency
   ur_tending/dual_gripper.py    geometry of the bent dual gripper (TCPs), robot base orientation
+tools/step_to_obj.py            STEP assembly -> OBJ meshes (OpenCASCADE), used for the SCHUNK EGK 40
 tools/gen_world.py              generates worlds/tournage.wbt (+ worlds/obstacles.json, collision volumes)
 tools/check_collisions.py       offline collision check of the whole robot cycle
 tools/sim_check.sh              Webots run without rendering + collision report
@@ -163,3 +164,8 @@ Kinematics:
 - Turning is shown, not computed: the stock sleeve shortens as the tool advances, and the spindle speed is slowed down
   to stay visible.
 - At the crate exchange, the turned parts are reused as new blanks (fixed pool of 16 parts).
+
+## Credits
+
+SCHUNK EGK 40-MB-M-B CAD model: © SCHUNK GmbH & Co. KG, distributed by CADENAS under the CC BY-ND 4.0 licence
+(`cad/` holds the original STEP file, `protos/meshes/egk40/` the same geometry converted to OBJ, unmodified).

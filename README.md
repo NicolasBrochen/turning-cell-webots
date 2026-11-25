@@ -107,8 +107,9 @@ fingers) have **collision volumes** (`boundingObject`), so a contact is a real c
   replays the robot cycle with the same IK and the same job steps as the controllers, measures the clearance between
   the robot (with the carried parts) and every collision volume (exported by `tools/gen_world.py` to
   `worlds/obstacles.json`), including self-collisions of the tool against the arm. This is how the gripper orientation
-  in the lathes and the joint seeds were chosen. Current result: no collision; apart from the part set down in the crate,
-  the smallest clearance is 7 mm (tool and forearm during the start-up), 9 mm between the bracket and the crate walls.
+  in the lathes and the joint seeds were chosen. Current result: no collision; the smallest computed clearances are 4 mm
+  between the bracket and the crate walls (the checker models thin plates with 12 mm spheres: about 9 mm in reality)
+  and 5 mm between a carried blank and the closed door of the other lathe.
 
 The UR10e base is turned so that its zero pose (arm stretched out) points to the free back side, and the start-up
 folds the arm before turning the base: nothing is swept on the way to the home position.
@@ -136,6 +137,7 @@ controllers/
 tools/step_to_obj.py            STEP assembly -> OBJ meshes (OpenCASCADE), used for the SCHUNK EGK 40
 tools/gen_world.py              generates worlds/tournage.wbt (+ worlds/obstacles.json, collision volumes)
 tools/check_collisions.py       offline collision check of the whole robot cycle
+tools/optimize_motion.py        search of the station configurations that minimise the base / shoulder / elbow motion
 tools/sim_check.sh              Webots run without rendering + collision report
 tools/build_site.sh             HTML5 3D animation -> site/ (GitHub Pages)
 tools/build_media.sh            videos, GIF and stills -> docs/
@@ -151,10 +153,17 @@ the PLC).
 Kinematics:
 - **Inverse kinematics:** numerical (damped least squares, exact orientation error).
 - **Wrist orientation:** with the bent bracket the flange normal is at 45° from the approach direction. In the lathes
-  the idle gripper points up and towards the back of the machine (the flange and the wrist stay low and on the robot
-  side); at the crates it points away from the base.
-- **Starting configurations:** one per station (base turned towards the lathe, elbow up), found by the offline
-  collision checker. Switching from one gripper to the other only takes half a turn of wrist 3.
+  the idle gripper points towards the back of the machine, 30° up (the flange and the wrist stay on the robot side);
+  at the crates it points sideways, away from the cell centre line (the long side of the EGK housing then runs along
+  the crate).
+- **Motion optimisation** ([`tools/optimize_motion.py`](tools/optimize_motion.py)): the big joints (base, shoulder,
+  elbow) should move as little as possible, the wrist doing the orientation work. For every gripper orientation the
+  IK gives several arm configurations; each one is checked for collisions over its jobs, then the best combinations
+  are replayed over the whole cycle and scored by the travel of J1 + J2 + J3. Result: the same configuration family
+  (elbow below the shoulder–wrist line) at the lathes and at the crates, so the elbow no longer flips between the
+  stations; retreat point 0.25 m in front of the door. Over the 246 s cycle the travel of J1 + J2 + J3 drops from
+  316 to 240 rad (elbow: 185 → 92 rad), with no collision. Switching from one gripper to the other only takes half
+  a turn of wrist 3.
 
 ## Simplifications
 

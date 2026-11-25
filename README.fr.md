@@ -112,8 +112,9 @@ pinces, doigts) ont des **volumes de collision** (`boundingObject`) : un contact
   mesure la distance entre le robot (pièces portées comprises) et chaque volume de collision (exportés par
   `tools/gen_world.py` dans `worlds/obstacles.json`), y compris les collisions de l'outil avec le bras. C'est avec lui
   qu'ont été choisies l'orientation de la pince dans les tours et les configurations de départ. Résultat actuel :
-  aucune collision ; hors pièce posée dans la caisse, la plus petite distance est de 7 mm (outil et avant-bras pendant
-  la mise en route), 9 mm entre le support et les parois de caisse.
+  aucune collision ; les plus petites distances calculées sont 4 mm entre le support et les parois de caisse (le
+  vérificateur modélise les tôles minces par des sphères de 12 mm : environ 9 mm en réalité) et 5 mm entre un brut
+  porté et la porte fermée de l'autre tour.
 
 La base du UR10e est orientée pour que sa position zéro (bras tendu) pointe vers l'arrière libre, et la mise en route
 replie le bras avant de tourner la base : rien n'est balayé sur le chemin de la position de repos.
@@ -141,6 +142,7 @@ controllers/
 tools/step_to_obj.py            assemblage STEP -> maillages OBJ (OpenCASCADE), utilisé pour la SCHUNK EGK 40
 tools/gen_world.py              génère worlds/tournage.wbt (+ worlds/obstacles.json, volumes de collision)
 tools/check_collisions.py       vérification hors ligne des collisions sur tout le cycle du robot
+tools/optimize_motion.py        recherche des configurations qui minimisent les mouvements base / épaule / coude
 tools/sim_check.sh              simulation Webots sans rendu + rapport de collisions
 tools/build_site.sh             animation 3D HTML5 -> site/ (GitHub Pages)
 tools/build_media.sh            vidéos, GIF et images -> docs/
@@ -156,10 +158,17 @@ mouvement articulaire, un mouvement linéaire, un mouvement gardé en effort, un
 Cinématique :
 - **IK :** numérique (moindres carrés amortis, erreur d'orientation exacte).
 - **Orientation du poignet :** avec le support coudé, la normale de la bride est à 45° de la direction d'approche.
-  Dans les tours, la pince inactive pointe vers le haut et vers le fond de la machine (la bride et le poignet restent
-  bas et du côté du robot) ; aux caisses, elle pointe à l'opposé de la base.
-- **Configurations de départ :** une par poste (base tournée vers le tour, coude en haut), trouvées avec le
-  vérificateur de collisions hors ligne. Passer d'une pince à l'autre ne demande qu'un demi-tour du poignet 3.
+  Dans les tours, la pince inactive pointe vers le fond de la machine, 30° vers le haut (la bride et le poignet restent
+  du côté du robot) ; aux caisses, elle pointe sur le côté, à l'opposé de l'axe de la cellule (le grand côté du
+  boîtier EGK suit alors la longueur de la caisse).
+- **Optimisation des mouvements** ([`tools/optimize_motion.py`](tools/optimize_motion.py)) : les gros axes (base,
+  épaule, coude) doivent bouger le moins possible, le poignet se chargeant des orientations. Pour chaque orientation
+  de la pince, l'IK donne plusieurs configurations du bras ; chacune est vérifiée sans collision sur ses tâches, puis
+  les meilleures combinaisons sont rejouées sur tout le cycle et notées sur le déplacement de J1 + J2 + J3. Résultat :
+  la même famille de configuration (coude sous la ligne épaule–poignet) aux tours et aux caisses, le coude ne se
+  retourne plus entre les postes ; point de recul à 0,25 m devant la porte. Sur le cycle de 246 s, le déplacement de
+  J1 + J2 + J3 passe de 316 à 240 rad (coude : 185 → 92 rad), sans collision. Passer d'une pince à l'autre ne
+  demande qu'un demi-tour du poignet 3.
 
 ## Simplifications
 

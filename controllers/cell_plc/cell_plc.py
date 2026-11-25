@@ -57,16 +57,19 @@ GAIT_DZ = [-0.02, 0.04, 0.08, -0.03, -0.02, 0.04, 0.08, -0.03]
 
 # orientation of the bent dual gripper in the lathe: the idle gripper points along LATHE_M (lathe frame),
 # the flange and the wrist stay on the opposite side
-LATHE_M = [-0.5, 0.0, 0.866]       # idle gripper up and towards the back of the machine (120°)
-OUT_DX, OUT_DZ = 0.32, 0.12        # retreat point in front of the door (lathe frame, from the façade / spindle height)
-CRATE_M_ANGLE = math.radians(-25)  # idle gripper at the crates: sideways (±x, away from the centre line), 25° backwards
+LATHE_M = [-0.866, 0.0, 0.5]       # idle gripper towards the back of the machine, 30° up (150°)
+OUT_DX, OUT_DZ = 0.25, 0.22        # retreat point in front of the door (lathe frame, from the façade / spindle height)
+CRATE_UP = 0.28                    # clearance height above the crate cells for the vertical moves
+RETREAT_HOME = True                # go back above the table before reporting "clear" (door closing)
+CRATE_M_ANGLE = 0.0                # idle gripper at the crates: sideways (±x), away from the centre line
 
 # joint seeds per lathe / crate and gripper, given with the cell axes and converted with the orientation of the robot
-# base (found with tools/check_collisions.py). Both grippers share the flange pose: switching gripper = half a turn
-# of wrist 3.
-SEEDS = {("A", 1): [2.884, -0.56, 1.082, -1.835, 0.686, 0.356], ("A", 2): [2.884, -0.56, 1.082, -1.835, 0.686, -2.786],
-         ("B", 1): [-0.258, -0.56, 1.082, -1.835, 0.686, 0.356], ("B", 2): [-0.258, -0.56, 1.082, -1.835, 0.686, -2.786]}
-CRATE_SEEDS = {1: [-1.203, -1.839, -1.582, -1.36, 2.354, -0.097], 2: [-1.203, -1.839, -1.582, -1.36, 2.354, 3.045]}
+# base, chosen by tools/optimize_motion.py: same arm configuration family at the lathes and at the crates (elbow
+# below the shoulder-wrist line), so that going from one station to the other is mostly a base and wrist motion.
+# Both grippers share the flange pose: switching gripper = half a turn of wrist 3.
+SEEDS = {("A", 1): [2.872, 0.37, -1.08, -0.01, 0.57, 0.25], ("A", 2): [2.872, 0.37, -1.08, -0.01, 0.57, -2.892],
+         ("B", 1): [-0.27, 0.37, -1.08, -0.01, 0.57, 0.25], ("B", 2): [-0.27, 0.37, -1.08, -0.01, 0.57, -2.892]}
+CRATE_SEEDS = {1: [-1.191, -1.79, -1.74, -0.83, 2.29, 0.51], 2: [-1.191, -1.79, -1.74, -0.83, 2.29, -2.632]}
 SEEDS = {k: base_q(v) for k, v in SEEDS.items()}
 CRATE_SEEDS = {k: base_q(v) for k, v in CRATE_SEEDS.items()}
 
@@ -333,7 +336,7 @@ class CellPLC(Supervisor):
     def crate_steps_pick(self, g, crate, i, part):
         c = self.cell_xyz(crate, i)
         grip = [c[0], c[1], c[2] + PART_L / 2 - GRIP_FROM_BACK]
-        above = [grip[0], grip[1], grip[2] + 0.28]
+        above = [grip[0], grip[1], grip[2] + CRATE_UP]
         d, x = self.crate_frame(g, c)
         return [dict(t="open", g=g), dict(t="joint", g=g, p=above, a=d, x=x, seed=CRATE_SEEDS[g]),
                 dict(t="lin", g=g, p=grip, a=d, x=x, v=0.25),
@@ -343,7 +346,7 @@ class CellPLC(Supervisor):
         c = self.cell_xyz(crate, i)
         grip = [c[0], c[1], c[2] + PART_L / 2 - GRIP_FROM_BACK]
         start = [grip[0], grip[1], grip[2] + 0.02]
-        above = [grip[0], grip[1], grip[2] + 0.28]
+        above = [grip[0], grip[1], grip[2] + CRATE_UP]
         d, x = self.crate_frame(g, c)
         return [dict(t="joint", g=g, p=above, a=d, x=x, seed=CRATE_SEEDS[g]), dict(t="lin", g=g, p=start, a=d, x=x, v=0.25),
                 dict(t="force", g=g, dir=d, contact=0.02, max=0.035, F=20, v=0.03),
@@ -366,7 +369,9 @@ class CellPLC(Supervisor):
               dict(t="force", g=1, dir=a, contact=0.10, max=0.115, F=40, v=0.05),
               dict(t="req", what="chuck_clamp", lathe=L), dict(t="open", g=1),
               dict(t="lin", g=1, p=pre, a=a, x=x1, v=0.2), dict(t="lin", g=1, p=out, a=a, x=x1, v=0.4),
-              dict(t="home"), dict(t="evt", name="clear", lathe=L)]       # door closes once the arm is back
+              dict(t="evt", name="clear", lathe=L)]
+        if RETREAT_HOME:                    # door closes only once the arm is back above the table
+            s.insert(-1, dict(t="home"))
         return s
 
     def send_job(self, steps, what):

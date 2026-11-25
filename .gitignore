@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.bak
+*.log
+worlds/.*
+# contrôleurs copiés dans le projet par webotMCP
+controllers/mcp_bridge/
+controllers/mcp_robot/
+.media_tmp/
+site/.build.log
+.DS_Store

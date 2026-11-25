@@ -1,0 +1,97 @@
+#VRML_SIM R2025a utf8
+# template language: javascript
+# Travée de protection périmétrique, même facture que les carters des projets praline-cell / robot-cell
+# (SafetyFence.proto) : profilés aluminium 45x45 rainurés (RAL 9006), panneau polycarbonate clair, joints noirs,
+# lisse basse (garde au sol), lisse intermédiaire et double lisse haute, bouchons d'extrémité, platines.
+# Origine = pied du poteau gauche ; la travée s'étend le long de +x sur `width`.
+# Une ouverture (passage convoyeur) peut être réservée entre openZ0 et openZ1 sur toute la largeur.
+# La géométrie est fusionnée par matériau (1 Shape par matériau) pour garder le rendu temps réel.
+
+PROTO GuardBay [
+  field SFVec3f    translation  0 0 0
+  field SFRotation rotation     0 0 1 0
+  field SFString   name         "travee grillage"
+  field SFFloat    width        1.4
+  field SFFloat    height       2.2
+  field SFFloat    kick         0.12     # garde au sol (ISO 13857 : < 180 mm)
+  field SFFloat    openZ0       -1       # bas de l'ouverture (désactivée si < 0)
+  field SFFloat    openZ1       -1       # haut de l'ouverture
+  field SFBool     rightPost    FALSE    # poteau de fin de ligne
+  field SFBool     panel        TRUE     # FALSE = travée vide (passage)
+]
+{
+  %<
+    const W = fields.width.value, H = fields.height.value, K = fields.kick.value;
+    const z0 = fields.openZ0.value, z1 = fields.openZ1.value;
+    const P = 0.045;
+    const M = { alu: [[], []], slot: [[], []], pc: [[], []], seal: [[], []], plug: [[], []], yel: [[], []] };
+    function add(m, cx, cy, cz, sx, sy, sz) {
+      const pts = M[m][0], idx = M[m][1], b = pts.length;
+      for (let i = 0; i < 8; i++)
+        pts.push([cx + ((i & 4) ? sx : -sx) / 2, cy + ((i & 2) ? sy : -sy) / 2, cz + ((i & 1) ? sz : -sz) / 2]);
+      const F = [[0, 1, 3, 2], [4, 6, 7, 5], [0, 4, 5, 1], [2, 3, 7, 6], [0, 2, 6, 4], [1, 5, 7, 3]];
+      for (const q of F) idx.push(q.map((k) => k + b).join(' ') + ' -1');
+    }
+    function post(x) {
+      add('alu', x, 0, H / 2, P, P, H);
+      add('slot', x + P / 2, 0, H / 2, 0.002, 0.01, H - 0.01);
+      add('slot', x - P / 2, 0, H / 2, 0.002, 0.01, H - 0.01);
+      add('slot', x, P / 2, H / 2, 0.01, 0.002, H - 0.01);
+      add('slot', x, -P / 2, H / 2, 0.01, 0.002, H - 0.01);
+      add('plug', x, 0, H + 0.002, P, P, 0.004);
+      add('alu', x, 0, 0.004, 0.1, 0.1, 0.008);
+    }
+    function rail(z) {
+      add('alu', W / 2, 0, z, W - P, P, 0.045);
+      add('slot', W / 2, P / 2, z, W - P, 0.002, 0.01);
+      add('slot', W / 2, -P / 2, z, W - P, 0.002, 0.01);
+    }
+    function sheet(za, zb) {
+      if (zb - za < 0.02) return;
+      const w = W - P - 0.004, zm = (za + zb) / 2, h = zb - za;
+      add('pc', W / 2, 0, zm, w, 0.006, h);
+      add('seal', W / 2, 0, zb - 0.004, w, 0.009, 0.008);
+      add('seal', W / 2, 0, za + 0.004, w, 0.009, 0.008);
+      add('seal', P / 2 + 0.004, 0, zm, 0.008, 0.009, h);
+      add('seal', W - P / 2 - 0.004, 0, zm, 0.008, 0.009, h);
+    }
+    const zMid = 1.0, zTop = H - 0.045;
+    post(0);
+    if (fields.rightPost.value) post(W);
+    if (fields.panel.value) {
+      rail(zTop + 0.0225);
+      rail(zTop - 0.0225);
+      if (z0 < 0) {
+        rail(K - 0.0225); rail(zMid);
+        sheet(K, zMid - 0.0225); sheet(zMid + 0.0225, zTop - 0.045);
+      } else {
+        if (z0 > K + 0.05) { rail(K - 0.0225); sheet(K, z0 - 0.045); rail(z0 - 0.0225); }
+        rail(z1 + 0.0225);
+        sheet(z1 + 0.045, zTop - 0.045);
+      }
+      add('yel', W / 2, -0.005, 1.6, 0.16, 0.002, 0.11);
+    }
+    const APP = {
+      alu: 'PBRAppearance { baseColor 0.66 0.67 0.66 roughness 0.35 metalness 0.85 }',
+      slot: 'PBRAppearance { baseColor 0.25 0.26 0.27 roughness 0.6 metalness 0.5 }',
+      pc: 'PBRAppearance { baseColor 0.72 0.77 0.8 roughness 0.08 metalness 0 transparency 0.8 }',
+      seal: 'PBRAppearance { baseColor 0.05 0.05 0.05 roughness 0.8 metalness 0 }',
+      plug: 'PBRAppearance { baseColor 0.08 0.08 0.08 roughness 0.6 metalness 0 }',
+      yel: 'PBRAppearance { baseColor 1 0.78 0.05 roughness 0.6 metalness 0 }',
+    };
+    let shapes = '';
+    for (const m in M) {
+      if (M[m][0].length === 0) continue;
+      const pts = M[m][0].map((p) => p.map((v) => v.toFixed(4)).join(' ')).join(', ');
+      shapes += `Shape { castShadows ${m === 'pc' ? 'FALSE' : 'TRUE'} appearance ${APP[m]} geometry IndexedFaceSet { coord Coordinate { point [ ${pts} ] } coordIndex [ ${M[m][1].join(' ')} ] creaseAngle 0.5 } }\n`;
+    }
+  >%
+  Solid {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    children [
+      %<= shapes >%
+    ]
+  }
+}

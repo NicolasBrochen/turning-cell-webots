@@ -64,6 +64,20 @@ def fk(q, tcp=None):
     return mat_mul(T, tcp) if tcp is not None else T
 
 
+def fk_frames(q):
+    """Repères (4x4, base robot) des 6 corps (shoulder, upper_arm, forearm, wrist_1, wrist_2, wrist_3) et du toolSlot."""
+    T = tr(0, 0, 0)
+    out = []
+    for (t, ax, fixed), qi in zip(CHAIN, q):
+        T = mat_mul(T, tr(*t))
+        T = mat_mul(T, rot(ax, qi))
+        if fixed:
+            T = mat_mul(T, rot(*fixed))
+        out.append(T)
+    out.append(mat_mul(T, TOOL_SLOT))
+    return out
+
+
 def _err(T, G):
     """Erreur 6D : position + vecteur rotation (angle * axe) de R_err = R_G R_T^T (log exact, y compris près de pi)."""
     e = [G[i][3] - T[i][3] for i in range(3)]

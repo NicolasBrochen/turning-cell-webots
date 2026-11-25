@@ -27,13 +27,13 @@ WBT
 }
 cat > "$tmpd/a.json" <<JSON
 {"width": 1280, "height": 720, "clips": [
-  {"file": "$T/cycle.mp4", "start": 0, "end": 226, "accel": 4, "position": [0.9, 3.3, 3.1], "look_at": [-0.1, -0.1, 0.9]}
+  {"file": "$T/cycle.mp4", "start": 0, "end": 244, "accel": 4, "position": [1.1, 3.9, 3.4], "look_at": [-0.1, -0.1, 0.9]}
 ]}
 JSON
 cat > "$tmpd/b.json" <<JSON
 {"width": 1280, "height": 720, "clips": [
-  {"file": "$T/prise.mp4", "start": 51.0, "end": 73.0, "accel": 1, "position": [-0.15, -0.95, 1.6], "look_at": [-0.95, -0.3, 1.1]},
-  {"file": "$T/bande.mp4", "start": 207.0, "end": 223.0, "accel": 1, "position": [2.3, 3.4, 2.2], "look_at": [0.0, 1.1, 0.8]}
+  {"file": "$T/prise.mp4", "start": 60.0, "end": 86.0, "accel": 1, "position": [-0.15, 0.75, 1.75], "look_at": [-1.15, -0.3, 1.1]},
+  {"file": "$T/bande.mp4", "start": 225.0, "end": 243.0, "accel": 1, "position": [2.3, 3.4, 2.2], "look_at": [0.0, 1.1, 0.8]}
 ]}
 JSON
 run "$tmpd/a.json"

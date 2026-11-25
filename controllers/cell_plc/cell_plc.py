@@ -12,9 +12,13 @@ S = end-of-cycle stop. The same letters can be written into the customData field
 """
 import json
 import math
+import os
 import sys
 
 from controller import DistanceSensor, Supervisor
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ur_tending"))
+from dual_gripper import base_q  # noqa: E402
 
 # ---------------------------------------------------------------- geometry (see tools/gen_world.py)
 CX, CZ, CHUCK_Y, JAW_FACE = -0.40, 1.10, -0.46, -0.355
@@ -26,9 +30,11 @@ CRATES = {"BRUTS": (-0.25, 0.85), "FINIES": (0.25, 0.85)}
 CELL_X = (-0.12, 0.0, 0.12)
 CELL_Y = (-0.195, -0.065, 0.065, 0.195)
 PART_Z = TABLE_Z + 0.0063 + PART_L / 2
-LATHES = {"A": (-0.65, 0.0), "B": (0.65, math.pi)}           # translation x, yaw
+LATHE_X = 0.80
+LATHES = {"A": (-LATHE_X, 0.0), "B": (LATHE_X, math.pi)}     # translation x, yaw
+TUR_PARK = (-0.72, 0.10, 1.42)     # turret rest position (lathe frame)
 SPIN = 9.0                         # rad/s (visual spindle speed)
-TUR_AX0 = 0.39                     # turret axial travel to the part's free end (tool tip y = 0.08 - s)
+TUR_AX0 = TUR_PARK[1] + 0.29       # turret axial travel to the part's free end (tool tip y = park_y - 0.02 - s)
 TUR_RAD = 0.111                    # turret radial travel to the cutting diameter
 T_CUT = 16.0                       # s, turning pass
 SCAN_PROT = (-0.9, 0.9, 1.40, 2.0)
@@ -49,23 +55,28 @@ GAIT_FIELDS = ["leftArmAngle", "leftLowerArmAngle", "leftHandAngle", "rightArmAn
 GAIT_DZ = [-0.02, 0.04, 0.08, -0.03, -0.02, 0.04, 0.08, -0.03]
 
 
-# joint seeds per lathe and gripper: base turned towards the lathe, elbow up, wrist 2 at ±90° (far from the
-# wrist singularity). Both grippers share the flange pose, so switching gripper = half a turn of wrist 3.
-SEEDS = {("A", 2): [2.285, -2.254, 2.314, -1.631, -1.571, -0.856], ("A", 1): [2.285, -2.254, 2.314, -1.631, -1.571, 2.285],
-         ("B", 1): [-0.856, -2.254, 2.314, -1.631, -1.571, 2.285], ("B", 2): [-0.856, -2.254, 2.314, -1.631, -1.571, -0.856]}
+# orientation of the bent dual gripper in the lathe: the idle gripper points along LATHE_M (lathe frame),
+# the flange and the wrist stay on the opposite side
+LATHE_M = [-0.5, 0.0, 0.866]       # idle gripper up and towards the back of the machine (120°)
+OUT_DX, OUT_DZ = 0.32, 0.12        # retreat point in front of the door (lathe frame, from the façade / spindle height)
 
-
+# joint seeds per lathe and gripper (given with the cell axes, converted with the orientation of the robot base): elbow up, wrist away from the singularity. Both grippers
+# share the flange pose, so switching gripper = half a turn of wrist 3 (found with tools/check_collisions.py).
+SEEDS = {("A", 1): [2.884, -0.56, 1.082, -1.835, 0.686, 0.356], ("A", 2): [2.884, -0.56, 1.082, -1.835, 0.686, -2.786],
+         ("B", 1): [-0.258, -0.56, 1.082, -1.835, 0.686, 0.356], ("B", 2): [-0.258, -0.56, 1.082, -1.835, 0.686, -2.786]}
 CRATE_SEEDS = {1: [1.299, -1.478, 1.594, -0.116, 1.299, -1.571], 2: [1.299, -1.478, 1.594, -0.116, 1.299, 1.571]}
+SEEDS = {k: base_q(v) for k, v in SEEDS.items()}
+CRATE_SEEDS = {k: base_q(v) for k, v in CRATE_SEEDS.items()}
 
 
 def cross(a, b):
     return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
 
 
-def tool_x(g, a, n):
-    """Finger axis giving flange normal n (gripper 1: n = -y_tool, gripper 2: n = +y_tool) for approach a."""
-    y = [-c for c in n] if g == 1 else list(n)
-    return cross(y, a)
+def tool_x(g, a, m):
+    """Finger axis for approach a such that the flange normal is n = cos45 a + sin45 m (m ⊥ a): the bent bracket
+    puts the flange (and the wrist) on the -m side, and the idle gripper points along m."""
+    return cross(a, m) if g == 1 else cross(m, a)
 
 
 def rz(a):
@@ -144,10 +155,10 @@ class Lathe:
             j.getField("translation").setSFVec3f([(r + 0.02) * math.cos(a), 0.0825, (r + 0.02) * math.sin(a)])
 
     def set_turret(self, s_axial, s_radial):
-        # parked at (-0.72, 0.10, 1.42), tool tip 0.133 m from the spindle axis; the cross slide moves the tip
+        # parked at TUR_PARK, tool tip 0.133 m from the spindle axis; the cross slide moves the tip
         # along the part (lathe -y) and towards the axis (45° slant bed)
         self.turret.getField("translation").setSFVec3f(
-            [-0.72 + 0.707 * s_radial, 0.10 - s_axial, 1.42 - 0.707 * s_radial])
+            [TUR_PARK[0] + 0.707 * s_radial, TUR_PARK[1] - s_axial, TUR_PARK[2] - 0.707 * s_radial])
 
     def lamp(self, c, on):
         col = {"G": [0, 1, 0], "O": [1, 0.55, 0], "R": [1, 0, 0]}[c]
@@ -180,7 +191,7 @@ class Lathe:
         return self.world([CX, SEAT_FRONT + PART_L - GRIP_FROM_BACK + 0.10, CZ])
 
     def tcp_out(self):
-        return self.world([0.32, SEAT_FRONT + PART_L - GRIP_FROM_BACK + 0.10, CZ + 0.12])
+        return self.world([OUT_DX, SEAT_FRONT + PART_L - GRIP_FROM_BACK + 0.10, CZ + OUT_DZ])
 
     # -- cycle
     def start_cycle(self):
@@ -289,6 +300,7 @@ class CellPLC(Supervisor):
         self.op = dict(state="away", x=OPERATOR_HOME[0], y=OPERATOR_HOME[1], h=math.pi, t=0.0, phase=0.0)
         self.swap_requested = False
         self.place_operator()
+        self.init_collisions()
 
     # ------------------------------------------------------------------ utilities
     def log(self, msg):
@@ -310,9 +322,9 @@ class CellPLC(Supervisor):
     # ------------------------------------------------------------------ robot jobs (world frame)
     def crate_frame(self, g, c):
         a = [0, 0, -1]
-        n = [c[0], c[1], 0.0]                            # flange normal pointing away from the base: wrist on the robot side
-        k = math.hypot(n[0], n[1])
-        return a, tool_x(g, a, [n[0] / k, n[1] / k, 0.0])
+        m = [c[0], c[1], 0.0]           # idle gripper pointing away from the base: flange and wrist on the robot side
+        k = math.hypot(m[0], m[1])
+        return a, tool_x(g, a, [m[0] / k, m[1] / k, 0.0])
 
     def crate_steps_pick(self, g, crate, i, part):
         c = self.cell_xyz(crate, i)
@@ -336,7 +348,8 @@ class CellPLC(Supervisor):
     def lathe_steps(self, L, unload):
         lt = self.lathes[L]
         a = lt.approach()
-        x1, x2 = tool_x(1, a, [0, 0, -1]), tool_x(2, a, [0, 0, -1])     # flange facing down: wrist above
+        m = lt.wdir(LATHE_M)
+        x1, x2 = tool_x(1, a, m), tool_x(2, a, m)
         out, pre, seat = lt.tcp_out(), lt.tcp_pre(), lt.tcp_seat()
         s = []
         if unload:
@@ -349,7 +362,7 @@ class CellPLC(Supervisor):
               dict(t="force", g=1, dir=a, contact=0.10, max=0.115, F=40, v=0.05),
               dict(t="req", what="chuck_clamp", lathe=L), dict(t="open", g=1),
               dict(t="lin", g=1, p=pre, a=a, x=x1, v=0.2), dict(t="lin", g=1, p=out, a=a, x=x1, v=0.4),
-              dict(t="evt", name="clear", lathe=L)]
+              dict(t="home"), dict(t="evt", name="clear", lathe=L)]       # door closes once the arm is back
         return s
 
     def send_job(self, steps, what):
@@ -518,6 +531,93 @@ class CellPLC(Supervisor):
             moved += 1
         self.log("Crates exchanged: %d new blanks, empty output crate" % moved)
 
+    # ------------------------------------------------------------------ collision monitor
+    # Every contact of the robot (links, bent bracket, grippers, fingers) is read from the physics engine. The only
+    # expected contact is a finger pad on the part being gripped; anything else is a collision: logged, shown by a red
+    # marker at the contact point and by a red line in the 3D view.
+    # In Webots: View > Optional Rendering > Show Contact Points / Show All Bounding Objects shows them live too.
+    def init_collisions(self):
+        self.ur = self.getFromDef("UR10E")
+        self.coll_markers = [self.getFromDef("COLL_%d" % k) for k in range(8)]
+        self.coll_k = 0
+        self.coll_count = 0
+        self.coll_last = {}
+        self.coll_obstacles = []
+        for d in ("TOUR_A", "TOUR_B", "TABLE", "CAISSE_BRUTS", "CAISSE_FINIES", "ALVEOLES_BRUTS", "ALVEOLES_FINIES", "SOCLE",
+                  "OPERATEUR"):
+            n = self.getFromDef(d)
+            if n:
+                self.coll_obstacles.append((d, n))
+        self.parts = []
+        for k in range(1, 17):
+            n = self.getFromDef("PART_%d" % k)
+            if n:
+                self.parts.append(("PART_%d" % k, n))
+                self.coll_obstacles.append(("PART_%d" % k, n))
+        self.node_names = {}
+
+    def node_name(self, nid, p=None):
+        if nid not in self.node_names and self.getFromId(nid) is None:
+            # body of the robot PROTO not exposed to the supervisor: name it from where the contact is
+            tcps = [self.getFromDef("TCP1"), self.getFromDef("TCP2")]
+            near = p is not None and any(t and math.dist(p, t.getPosition()) < 0.3 for t in tcps)
+            return "dual gripper / wrist" if near else "UR10e arm"
+        if nid not in self.node_names:
+            n = self.getFromId(nid)
+            name = "?"
+            if n:
+                f = n.getField("name") or (n.getProtoField("name") if hasattr(n, "getProtoField") else None)
+                name = f.getSFString() if f else n.getTypeName()
+            self.node_names[nid] = name
+        return self.node_names[nid]
+
+    @staticmethod
+    def cp_fields(cp):
+        p = getattr(cp, "point", None) or cp.getPoint()
+        nid = getattr(cp, "node_id", None)
+        return list(p), (cp.getNodeId() if nid is None else nid)
+
+    def collisions(self):
+        cps = self.ur.getContactPoints(True)
+        if not cps:
+            return
+        hits = []
+        for cp in cps:
+            p, nid = self.cp_fields(cp)
+            link = self.node_name(nid, p)
+            if link.endswith("_effort"):          # finger pad: expected on the part being gripped
+                if any(math.dist(p, n.getPosition()) < 0.07 for _, n in self.parts):
+                    continue
+            hits.append((link, p))
+        if not hits:
+            return
+        t = self.getTime()
+        for link, p in hits:
+            other = None
+            for d, n in self.coll_obstacles:
+                for cp in n.getContactPoints(True) or []:
+                    if math.dist(self.cp_fields(cp)[0], p) < 0.003:
+                        other = d
+                        break
+                if other:
+                    break
+            if other is None:
+                others = [l2 for l2, p2 in hits if l2 != link and math.dist(p2, p) < 0.003]
+                other = ("UR10e " + others[0]) if others else "UR10e (self) / unknown"
+            key = (link, other)
+            if t - self.coll_last.get(key, -9.0) < 2.0:
+                continue
+            self.coll_last[key] = t
+            self.coll_count += 1
+            m = self.coll_markers[self.coll_k % len(self.coll_markers)]
+            self.coll_k += 1
+            if m:
+                m.getField("translation").setSFVec3f(p)
+            msg = "COLLISION #%d: %s <-> %s at (%.2f, %.2f, %.2f)" % (self.coll_count, link, other, p[0], p[1], p[2])
+            print("[%6.1f s] %s" % (t, msg))
+            if "--sans-ihm" not in sys.argv:
+                self.setLabel(2, msg, 0.01, 0.80, 0.06, 0xFF3030, 0.0, "Arial")
+
     # ------------------------------------------------------------------ safety
     def scanner(self):
         prot = warn = 0
@@ -594,6 +694,7 @@ class CellPLC(Supervisor):
             if frame % 4 == 0:
                 self.scanner()
             self.robot_events()
+            self.collisions()
             if self.ack_t is not None:
                 self.ack_t -= self.dt
                 if self.ack_t <= 0:
@@ -607,4 +708,5 @@ class CellPLC(Supervisor):
                 self.schedule()
 
 
-CellPLC().run()
+if __name__ == "__main__":
+    CellPLC().run()

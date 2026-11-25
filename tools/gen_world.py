@@ -16,7 +16,10 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from wbtgen import (ALU, BLK, BLUE, DARK, PC, RED, STEEL, YEL, YELLOW, BLACK, app, box, cyl, cyl_x, cyl_y,  # noqa
-                    f, out, profile, render, solid, w)
+                    f, out, profile, render, solid, w, _rotm)
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "controllers", "ur_tending"))
+import dual_gripper as DG  # noqa: E402
+import json  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "..", "worlds", "tournage.wbt")
@@ -32,7 +35,8 @@ PROTOS = [
 
 # ---------------------------------------------------------------- géométrie partagée avec cell_plc.py
 ROBOT_Z = 0.80
-LATHE_X = 0.65                       # plan des façades
+LATHE_X = 0.80                       # plan des façades (tours écartés de 1.60 m)
+TUR_PARK = (-0.72, 0.10, 1.42)       # tourelle en position de repos (repère tour)
 CX, CZ = -0.40, 1.10                 # axe de broche (repère tour)
 CHUCK_Y = -0.46                      # centre du mandrin (corps de y -0.52 à -0.40)
 JAW_FACE = -0.355                    # face avant des mors
@@ -51,6 +55,44 @@ RAW = app("0.40 0.41 0.43", 0.75, 0.6)
 MACH = app("0.80 0.82 0.85", 0.18, 1.0)
 SCHUNK = app("0.70 0.72 0.74", 0.3, 0.8)       # corps anodisé gris clair
 SCHUNK_B = app("0.12 0.13 0.15", 0.5, 0.3)
+
+
+# ---------------------------------------------------------------- géométrie de collision
+# Chaque volume de collision sert deux fois : boundingObject Webots (contacts réels, visibles avec View > Optional
+# Rendering > Show All Bounding Objects / Show Contact Points) et liste d'obstacles exportée pour le vérificateur hors
+# ligne tools/check_collisions.py (worlds/obstacles.json).
+OBST = []
+
+
+def _mul(a, b):
+    return [[sum(a[i][k] * b[k][j] for k in range(3)) for j in range(3)] for i in range(3)]
+
+
+def frame(pos=(0, 0, 0), rot=None, parent=None):
+    """Repère (origine, matrice) ; `parent` = repère englobant."""
+    R = [list(r) for r in _rotm(rot)]
+    if parent is None:
+        return (list(pos), R)
+    o, P = parent
+    return ([o[i] + sum(P[i][k] * pos[k] for k in range(3)) for i in range(3)], _mul(P, R))
+
+
+def bo(items):
+    """items : ('box', (sx,sy,sz), pos, rot) | ('cyl', (r, h), pos, rot) -> boundingObject Webots."""
+    s_ = []
+    for kind, dims, pos, rot in items:
+        geo = "Box { size %s }" % f(dims) if kind == "box" else "Cylinder { radius %g height %g }" % dims
+        s_.append("Pose { translation %s%s children [ %s ] }" % (f(pos), " rotation %s" % f(rot) if rot else "", geo))
+    return "Group { children [ %s ] }" % " ".join(s_)
+
+
+def register(owner, items, fr, tag=""):
+    for kind, dims, pos, rot in items:
+        c, R = frame(pos, rot, fr)
+        OBST.append(dict(owner=owner, tag=tag, kind=kind, dims=list(dims), c=c, R=R))
+
+
+RX90 = (1, 0, 0, math.pi / 2)        # cylindre d'axe y
 
 w("#VRML_SIM R2025a utf8")
 for p in PROTOS:
@@ -119,12 +161,12 @@ for (y0, y1, col) in ((1.40, 2.0, "0.85 0.1 0.1"), (2.0, 2.8, "1 0.55 0")):
     floor_line((-0.9, y1), (0.9, y1), 0.05, col)
     floor_line((-0.9, y0), (-0.9, y1), 0.05, col)
     floor_line((0.9, y0), (0.9, y1), 0.05, col)
-for k in range(9):  # hachures jaune/noir autour de la cellule
-    floor_line((-2.5 + 0.55 * k, -1.6), (-2.25 + 0.55 * k, -1.6), 0.1, YELLOW)
-floor_line((-2.6, 3.2), (2.6, 3.2), 0.1, "0.1 0.65 0.2")
-floor_line((-2.6, 3.9), (2.6, 3.9), 0.1, "0.1 0.65 0.2")
-floor_line((-2.6, -1.6), (-2.6, 3.2), 0.1, YELLOW)
-floor_line((2.6, -1.6), (2.6, 3.2), 0.1, YELLOW)
+for k in range(10):  # hachures jaune/noir autour de la cellule
+    floor_line((-2.7 + 0.55 * k, -1.6), (-2.45 + 0.55 * k, -1.6), 0.1, YELLOW)
+floor_line((-2.8, 3.2), (2.8, 3.2), 0.1, "0.1 0.65 0.2")
+floor_line((-2.8, 3.9), (2.8, 3.9), 0.1, "0.1 0.65 0.2")
+floor_line((-2.8, -1.6), (-2.8, 3.2), 0.1, YELLOW)
+floor_line((2.8, -1.6), (2.8, 3.2), 0.1, YELLOW)
 w('Solid { name "marquage sol" children [ %s ] locked TRUE }' % render(marks))
 
 
@@ -168,6 +210,24 @@ def lathe(prefix, pos, yaw, dynamic=True):
     p.append(box((0.6, 0.5, 0.45), app("0.1 0.3 0.7", 0.5, 0.2), (-0.7, y1 + 0.75, 0.25)))
     # interrupteur de porte (interverrouillage) + capotage moteur broche
     p.append(box((0.03, 0.05, 0.08), YEL, (0.02, -0.74, 1.25)))
+    fr = frame(pos, (0, 0, 1, yaw))
+    # volumes de collision du bâti : banc, façade autour de l'ouverture de porte, pupitre, carénage, poupée,
+    # banc incliné, convoyeur à copeaux (l'ouverture de porte y -0.72..0.32, z 0.88..1.69 reste libre)
+    col = [("box", (1.71, L, 0.88), (-0.845, cy_, 0.44), None),
+           ("box", (0.06, -0.72 - y0, 1.3), (-0.02, (y0 - 0.72) / 2, 1.43), None),
+           ("box", (0.06, y1 - 0.32, 1.3), (-0.02, (y1 + 0.32) / 2, 1.43), None),
+           ("box", (0.06, 1.04, 0.39), (-0.02, -0.2, 1.885), None),
+           ("box", (0.1, 0.32, 0.75), (0.07, -0.88, 1.45), None),
+           ("box", (0.06, 1.1, 0.03), (0.02, 0.35, 1.72), None),
+           ("box", (0.04, L, 1.3), (xb + 0.02, cy_, 1.43), None),
+           ("box", (-xb, 0.04, 1.3), (xb / 2, y0, 1.43), None),
+           ("box", (-xb, 0.04, 1.3), (xb / 2, y1, 1.43), None),
+           ("box", (-xb, L, 0.04), (xb / 2, cy_, 2.08), None),
+           ("box", (1.1, 0.5, 0.75), (-0.85, -0.78, 1.25), None),
+           ("cyl", (0.13, 0.05), (CX, -0.545, CZ), RX90),
+           ("box", (0.5, 1.6, 0.06), (-0.95, 0.15, 1.15), (0, 1, 0, -math.pi / 4)),
+           ("box", (0.6, 1.0, 0.7), (-0.7, y1 + 0.5, 0.35), None)]
+    register(prefix, col, fr, "bati")
     dyn = []
     if dynamic:
         door = [box((0.03, 1.04, 0.16), WHITE, (0, 0, 0.08)), box((0.03, 1.04, 0.14), WHITE, (0, 0, 0.81)),
@@ -175,20 +235,32 @@ def lathe(prefix, pos, yaw, dynamic=True):
                 box((0.012, 0.74, 0.6), PC, (0, 0, 0.45), cs=False),
                 box((0.03, 0.04, 0.4), ALU, (0.035, 0.42, 0.45)), box((0.02, 0.02, 0.06), ALU, (0.02, 0.42, 0.62)),
                 box((0.02, 0.02, 0.06), ALU, (0.02, 0.42, 0.28))]
-        dyn.append('DEF %s_DOOR Pose { translation 0.04 -0.2 0.84 children [ %s ] }' % (prefix, render(door)))
+        dcol = [("box", (0.07, 1.04, 0.88), (0.015, 0, 0.44), None)]
+        dyn.append('DEF %s_DOOR Solid { translation 0.04 -0.2 0.84 name "porte" children [ %s ] boundingObject %s }'
+                   % (prefix, render(door), bo(dcol)))
+        register(prefix + "_DOOR", dcol, frame((0.04, 0.85, 0.84), None, fr), "door_open")
+        register(prefix + "_DOOR", dcol, frame((0.04, -0.2, 0.84), None, fr), "door_closed")
         jaws = []
+        chuck_fr = frame((CX, CHUCK_Y, CZ), None, fr)
         for i in range(3):
             a = 2 * math.pi * i / 3
-            jaws.append('DEF %s_JAW%d Pose { translation %g 0.0825 %g rotation 0 1 0 %g children [ %s ] }' % (
-                prefix, i + 1, 0.07 * math.cos(a), 0.07 * math.sin(a), -a,
-                render([box((0.04, 0.045, 0.03), STEEL), box((0.004, 0.045, 0.026), app("0.3 0.3 0.32", 0.4, 0.8),
-                                                          (-0.02, 0, 0))])))
+            jcol = [("box", (0.04, 0.045, 0.03), (0, 0, 0), None)]
+            jaws.append('DEF %s_JAW%d Solid { translation %g 0.0825 %g rotation 0 1 0 %g name "mors %d" children [ %s ] '
+                        'boundingObject %s }' % (
+                            prefix, i + 1, 0.07 * math.cos(a), 0.07 * math.sin(a), -a, i + 1,
+                            render([box((0.04, 0.045, 0.03), STEEL),
+                                    box((0.004, 0.045, 0.026), app("0.3 0.3 0.32", 0.4, 0.8), (-0.02, 0, 0))]),
+                            bo(jcol)))
+        # mors (ouverts) vus par le vérificateur hors ligne comme un anneau r 0.045..0.11 devant le mandrin
+        register(prefix + "_CHUCK", [("cyl", (0.11, 0.045), (0, 0.0825, 0), RX90)], chuck_fr, "jaws")
         chuck = [cyl_y(0.105, 0.12, STEEL, (0, 0, 0)), cyl_y(0.03, 0.122, DARK, (0, 0, 0))]
         for i in range(3):
             a = 2 * math.pi * i / 3 + math.pi / 3
             chuck.append(box((0.03, 0.005, 0.012), DARK, (0.08 * math.cos(a), 0.061, 0.08 * math.sin(a))))
-        dyn.append('DEF %s_CHUCK Pose { translation %g %g %g children [ %s %s ] }' % (
-            prefix, CX, CHUCK_Y, CZ, render(chuck), " ".join(jaws)))
+        ccol = [("cyl", (0.105, 0.12), (0, 0, 0), RX90)]
+        dyn.append('DEF %s_CHUCK Solid { translation %g %g %g name "mandrin" children [ %s %s ] boundingObject %s }' % (
+            prefix, CX, CHUCK_Y, CZ, render(chuck), " ".join(jaws), bo(ccol)))
+        register(prefix + "_CHUCK", ccol, chuck_fr, "chuck")
         tur = [cyl_y(0.16, 0.09, LGREY, (0, 0, 0)), cyl_y(0.06, 0.1, DARK, (0, 0, 0)),
                box((0.3, 0.2, 0.3), ANTHRA, (-0.12, 0.06, 0.12))]
         for i in range(8):
@@ -202,7 +274,12 @@ def lathe(prefix, pos, yaw, dynamic=True):
         tur.append(cyl(0.006, 0.25, app("0.2 0.2 0.22", 0.6), (0.05, 0.05, 0.25)))           # buse arrosage
         tur.append('DEF %s_COOLANT Transform { translation 0.16 -0.02 -0.05 rotation 0 1 0 0.85 scale 1 1 0.001 '
                    'children [ %s ] }' % (prefix, render([cyl(0.004, 0.22, COOL, (0, 0, 0))])))
-        dyn.append('DEF %s_TURRET Pose { translation -0.72 0.10 1.42 children [ %s ] }' % (prefix, render(tur)))
+        c45 = math.cos(-math.pi / 4)
+        tcol = [("cyl", (0.245, 0.06), (0, 0, 0), RX90), ("box", (0.3, 0.2, 0.3), (-0.12, 0.06, 0.12), None),
+                ("box", (0.12, 0.04, 0.04), (0.28 * c45, -0.01, -0.28 * c45), (0, 1, 0, math.pi / 4))]
+        dyn.append('DEF %s_TURRET Solid { translation %s name "tourelle" children [ %s ] boundingObject %s }' % (
+            prefix, f(TUR_PARK), render(tur), bo(tcol)))
+        register(prefix + "_TURRET", tcol, frame(TUR_PARK, None, fr), "turret")
         lamps = []
         for i, (c, e) in enumerate((("0.1 0.5 0.1", "G"), ("0.6 0.4 0.05", "O"), ("0.5 0.05 0.05", "R"))):
             lamps.append('Pose { translation 0 0 %g children [ Shape { appearance %s geometry Cylinder { radius 0.04 '
@@ -213,8 +290,8 @@ def lathe(prefix, pos, yaw, dynamic=True):
     else:
         p.append(box((0.03, 1.04, 0.82), WHITE, (0.04, -0.2, 1.25)))
         p.append(box((0.012, 0.74, 0.6), PC, (0.06, -0.2, 1.29), cs=False))
-    w('DEF %s Solid { translation %s rotation 0 0 1 %g name "tour %s" children [ %s %s ] }' % (
-        prefix, f(pos), yaw, prefix, render(p), " ".join(dyn)))
+    w('DEF %s Solid { translation %s rotation 0 0 1 %g name "tour %s" children [ %s %s ] boundingObject %s }' % (
+        prefix, f(pos), yaw, prefix, render(p), " ".join(dyn), bo(col)))
 
 
 lathe("TOUR_A", (-LATHE_X, 0, 0), 0.0)
@@ -223,72 +300,104 @@ lathe("DECO_1", (-LATHE_X - 3.8, 4.4, 0), 0.0, dynamic=False)
 lathe("DECO_2", (LATHE_X + 3.8, 4.4, 0), math.pi, dynamic=False)
 
 # =============================================================== UR10e + capteur d'effort + double pince SCHUNK
-def finger(name, x0, side):
-    """Doigt de pince parallèle : glissière motorisée + TouchSensor 3 axes (effort au bout du doigt)."""
+def finger(name, side):
+    """Doigt de pince parallèle (repère local de la pince : x = approche, z = axe des doigts) : glissière motorisée,
+    TouchSensor de contact au bout du doigt (l'effort de serrage est lu sur le moteur du doigt)."""
     zs = 0.045 * side
     pad_z = -0.009 * side
-    shapes = render([box((0.075, 0.03, 0.012), app("0.55 0.57 0.6", 0.35, 0.85), (0.0375, 0, 0)),
+    fl = DG.FINGER_L
+    shapes = render([box((fl, 0.03, 0.012), app("0.55 0.57 0.6", 0.35, 0.85), (fl / 2, 0, 0)),
                      box((0.02, 0.026, 0.006), app("0.15 0.15 0.16", 0.7, 0), (0.045, 0, pad_z)),
                      box((0.03, 0.034, 0.02), SCHUNK_B, (-0.005, 0, side * 0.004))])
+    fcol = [("box", (0.02, 0.026, 0.006), (0.045, 0, pad_z), None), ("box", (fl, 0.03, 0.012), (fl / 2, 0, 0), None)]
     return """SliderJoint {
           jointParameters JointParameters { axis 0 0 %d }
           device [ LinearMotor { name "%s" maxVelocity 0.12 maxForce 140 minPosition -0.001 maxPosition 0.04 }
                    PositionSensor { name "%s_pos" } ]
           endPoint TouchSensor {
-            translation %g 0.082 %g
+            translation %g 0 %g
             name "%s_effort"
             type "bumper"
             contactMaterial "doigt"
             children [ %s ]
-            boundingObject Pose { translation 0.045 0 %g children [ Box { size 0.02 0.026 0.006 } ] }
+            boundingObject %s
             physics Physics { density -1 mass 0.06 }
           }
-        }""" % (-side, name, name, x0, zs, name, shapes, pad_z)
+        }""" % (-side, name, name, DG.FINGER_X0, zs, name, shapes, bo(fcol))
 
 
+def tri_prism(p0, p1, p2, z0, z1, appearance):
+    """Gousset triangulaire (prisme) dans le plan x-y, entre z0 et z1."""
+    pts = [(x, y, z) for z in (z0, z1) for (x, y) in (p0, p1, p2)]
+    return ("Shape { appearance %s geometry IndexedFaceSet { coord Coordinate { point [ %s ] } coordIndex [ "
+            "0 2 1 -1 3 4 5 -1 0 1 4 3 -1 1 2 5 4 -1 2 0 3 5 -1 ] } }" % (appearance, ", ".join(f(q) for q in pts)))
+
+
+# --- capteur d'effort 6 axes + plaque d'adaptation + support coudé à 90° (pinces à ±45° de l'axe de la bride)
+BRK = app("0.25 0.27 0.3", 0.45, 0.5)
+S45 = DG.S
 G = [cyl_y(0.045, 0.045, app("0.78 0.8 0.82", 0.3, 0.9), (0, 0.0225, 0)),          # capteur d'effort 6 axes
      cyl_y(0.047, 0.008, SCHUNK_B, (0, 0.03, 0)),
-     box((0.12, 0.012, 0.12), ALU, (0, 0.051, 0)),
-     box((0.36, 0.05, 0.07), app("0.25 0.27 0.3", 0.45, 0.5), (0, 0.082, 0)),       # adaptateur double pince
-     cyl(0.008, 0.08, app("0.15 0.4 0.85", 0.4, 0), (0.06, 0.11, 0.0), (0, 0, 1, 0)),  # tuyau d'alimentation
-     ]
-for sx in (1, -1):  # corps des 2 pinces parallèles (type SCHUNK EGK) + plaque d'identification
-    G.append(box((0.12, 0.065, 0.09), SCHUNK, (sx * 0.23, 0.082, 0)))
-    G.append(box((0.02, 0.07, 0.095), SCHUNK_B, (sx * 0.175, 0.082, 0)))
-    G.append(box((0.04, 0.002, 0.03), app("0.1 0.3 0.75", 0.4, 0.2), (sx * 0.23, 0.0485 + 0.067, 0)))
-    G.append(box((0.01, 0.05, 0.08), SCHUNK_B, (sx * 0.285, 0.082, 0)))
-    G.append(cyl(0.006, 0.01, app("0.1 0.9 0.2", emissive="0 0.6 0"), (sx * 0.2, 0.116, 0.03)))
-TCP1 = "DEF TCP1 Pose { translation 0.335 0.082 0 rotation 0.707107 0 0.707107 3.14159 }"
-TCP2 = "DEF TCP2 Pose { translation -0.335 0.082 0 rotation 0 1 0 -1.5708 }"
+     box((0.16, 0.012, 0.11), ALU, (0, 0.051, 0)),                                  # plaque d'adaptation
+     cyl(0.011, 0.11, BRK, (0, DG.APEX_Y - 0.009, 0))]                              # pli du support coudé
+gcol = [("cyl", (0.047, 0.05), (0, 0.025, 0), RX90), ("box", (0.16, 0.012, 0.11), (0, 0.051, 0), None)]
+for g in (1, 2):
+    th = DG.THETA[g]
+    d = DG.direction(g)
+    fc = DG.FACE[g]
+    leg = (fc[0] - 0.007 * d[0], fc[1] - 0.007 * d[1], 0)                           # aile du support (ép. 14 mm)
+    G.append(box((0.014, DG.BEND_LEN + 0.012, 0.11), BRK, leg, (0, 0, 1, th)))
+    gcol.append(("box", (0.014, DG.BEND_LEN + 0.012, 0.11), leg, (0, 0, 1, th)))
+    body = DG.local_to_slot(g, (DG.BODY_L / 2, 0, 0))
+    gcol.append(("box", (DG.BODY_L, 0.065, 0.09), body, (0, 0, 1, th)))
+gx = DG.BEND_LEN * S45
+for zz in (-0.05, 0.044):                                                           # goussets latéraux
+    G.append(tri_prism((-gx, DG.PLATE_TOP), (gx, DG.PLATE_TOP), (0, DG.APEX_Y), zz, zz + 0.006, BRK))
+G.append(cyl(0.007, 0.16, app("0.15 0.4 0.85", 0.4, 0), (0.0, 0.075, 0.062), (0, 1, 0, math.pi / 2)))  # air / câbles
+
+
+def gripper_unit(g):
+    """Une pince parallèle (type SCHUNK EGK) dans son repère local (x = approche) + doigts + TCP."""
+    u = [box((DG.BODY_L, 0.065, 0.09), SCHUNK, (DG.BODY_L / 2, 0, 0)),
+         box((0.02, 0.07, 0.095), SCHUNK_B, (0.005, 0, 0)),
+         box((0.04, 0.002, 0.03), app("0.1 0.3 0.75", 0.4, 0.2), (0.06, -0.0335, 0)),
+         box((0.01, 0.05, 0.08), SCHUNK_B, (DG.BODY_L - 0.005, 0, 0)),
+         cyl(0.006, 0.01, app("0.1 0.9 0.2", emissive="0 0.6 0"), (0.03, -0.034, 0.03), (1, 0, 0, math.pi / 2))]
+    tcp = "DEF TCP%d Pose { translation %g 0 0 rotation 0.707107 0 0.707107 3.14159 }" % (g, DG.TCP_X)
+    return "Pose { translation %s rotation 0 0 1 %.6f children [ %s %s %s %s ] }" % (
+        f(DG.FACE[g]), DG.THETA[g], render(u), finger("g%d_doigt_a" % g, 1), finger("g%d_doigt_b" % g, -1), tcp)
+
+
 gripper = """Pose {
   children [
-    %s
-    %s
-    %s
-    %s
-    %s
+    Solid {
+      name "double pince"
+      children [ %s ]
+      boundingObject %s
+      physics Physics { density -1 mass 1.2 }
+    }
     %s
     %s
     Emitter { name "robot_tx" channel 2 }
     Receiver { name "plc_rx" channel 1 }
   ]
-}""" % (render(G), finger("g1_doigt_a", 0.29, 1), finger("g1_doigt_b", 0.29, -1),
-        finger("g2_doigt_a", -0.29, 1).replace("translation -0.29 0.082", "rotation 0 0 1 3.14159 translation -0.29 0.082"),
-        finger("g2_doigt_b", -0.29, -1).replace("translation -0.29 0.082", "rotation 0 0 1 3.14159 translation -0.29 0.082"),
-        TCP1, TCP2)
+}""" % (render(G), bo(gcol), gripper_unit(1), gripper_unit(2))
+TOOL_COL = gcol
 w("""DEF UR10E UR10e {
   translation 0 0 %g
+  rotation 0 0 1 %g
   name "UR10e"
   controller "ur_tending"
   supervisor TRUE
-  selfCollision FALSE
+  selfCollision TRUE
   toolSlot [ %s ]
-}""" % (ROBOT_Z, gripper))
-w(solid("socle robot", (0, 0, 0), [cyl(0.16, ROBOT_Z - 0.03, app("0.25 0.27 0.3", 0.5, 0.5), (0, 0, (ROBOT_Z - 0.03) / 2)),
+}""" % (ROBOT_Z, DG.ROBOT_YAW, gripper))
+w(solid("socle robot", (0, 0, 0), def_="SOCLE", children=[cyl(0.16, ROBOT_Z - 0.03, app("0.25 0.27 0.3", 0.5, 0.5), (0, 0, (ROBOT_Z - 0.03) / 2)),
                                    box((0.5, 0.5, 0.025), app("0.25 0.27 0.3", 0.5, 0.5), (0, 0, 0.0125)),
                                    box((0.3, 0.3, 0.02), app("0.25 0.27 0.3", 0.5, 0.5), (0, 0, ROBOT_Z - 0.01))]
             + [cyl(0.015, 0.04, STEEL, (sx * 0.2, sy * 0.2, 0.03)) for sx in (-1, 1) for sy in (-1, 1)],
             bo="Pose { translation 0 0 %g children [ Cylinder { radius 0.16 height %g } ] }" % (ROBOT_Z / 2, ROBOT_Z)))
+register("socle robot", [("cyl", (0.16, ROBOT_Z - 0.03), (0, 0, (ROBOT_Z - 0.03) / 2), None)], frame(), "pedestal")
 
 # =============================================================== table à caisses + caisses + pièces
 tx, ty, tz = TABLE
@@ -300,9 +409,13 @@ for sy in (-0.28, 0.28):
     tb.append(profile((0.95, 0.045, 0.045), (tx, ty + sy, 0.15)))
 for sx in (-0.2, 0.2):
     tb.append(box((0.42, 0.02, 0.03), YEL, (tx + sx, ty - 0.31, tz + 0.015)))   # butées de positionnement
-w(solid("table a caisses", (0, 0, 0), tb))
+tcol = [("box", (1.0, 0.62, 0.02), (tx, ty, tz - 0.01), None)]
+w(solid("table a caisses", (0, 0, 0), tb, def_="TABLE", bo=bo(tcol)))
+register("TABLE", tcol, frame(), "table")
+
+
 def crate(cx_, cy_, z0, col, name):
-    """Bac plastique 400x600x180 (type KLT) : fond, parois nervurées, rebord, poignées (visuel, sans collision)."""
+    """Bac plastique 400x600x180 (type KLT) : fond, parois nervurées, rebord, poignées."""
     pa = app(col, 0.55, 0)
     dk = app(" ".join("%.3f" % (0.6 * float(c)) for c in col.split()), 0.6, 0)
     L, W, H, t = 0.4, 0.6, 0.18, 0.008
@@ -318,7 +431,14 @@ def crate(cx_, cy_, z0, col, name):
         c.append(box((0.12, 0.01, 0.035), app("0.05 0.05 0.06", 0.8), (cx_, cy_ + sy * (W / 2 + 0.001), z0 + H - 0.04)))
         for k in range(3):
             c.append(box((L - 0.04, 0.006, 0.008), dk, (cx_, cy_ + sy * (W / 2 + 0.003), z0 + 0.03 + 0.045 * k)))
-    w(solid("caisse %s" % name, (0, 0, 0), c, def_="CAISSE_" + name))
+    ccol = [("box", (L, W, 0.006), (cx_, cy_, z0 + 0.003), None)]
+    for sx in (-1, 1):
+        ccol.append(("box", (t + 0.02, W + 0.02, H), (cx_ + sx * (L / 2 - 0.002), cy_, z0 + H / 2), None))
+    for sy in (-1, 1):
+        ccol.append(("box", (L + 0.02, t + 0.02, H), (cx_, cy_ + sy * (W / 2 - 0.002), z0 + H / 2), None))
+    w(solid("caisse %s" % name, (0, 0, 0), c, def_="CAISSE_" + name, bo=bo(ccol)))
+    register("CAISSE_" + name, ccol[:1], frame(), "crate_floor")
+    register("CAISSE_" + name, ccol[1:], frame(), "crate")
 
 
 for name, (cx_, cy_) in CRATES.items():
@@ -329,7 +449,10 @@ for name, (cx_, cy_) in CRATES.items():
         dv.append(box((0.004, 0.56, 0.05), app(col, 0.6), (cx_ + xx, cy_, tz + 0.03)))
     for yy in (-0.13, 0.0, 0.13):
         dv.append(box((0.37, 0.004, 0.05), app(col, 0.6), (cx_, cy_ + yy, tz + 0.03)))
-    w(solid("alveoles %s" % name.lower(), (0, 0, 0), dv))
+    dcol = [("box", (0.004, 0.56, 0.05), (cx_ + xx, cy_, tz + 0.03), None) for xx in (-0.06, 0.06)]
+    dcol += [("box", (0.37, 0.004, 0.05), (cx_, cy_ + yy, tz + 0.03), None) for yy in (-0.13, 0.0, 0.13)]
+    w(solid("alveoles %s" % name.lower(), (0, 0, 0), dv, def_="ALVEOLES_" + name, bo=bo(dcol)))
+    register("ALVEOLES_" + name, dcol, frame(), "divider")
 
 
 def part(k, pos, rot, finished):
@@ -367,8 +490,8 @@ for k in range(1, 17):
 
 # =============================================================== carter arrière, scrutateurs, armoire robot, AU
 for i in range(2):
-    w('GuardBay { translation %s name "carter arriere %d" width 0.65 height 2.0%s }' % (
-        f((-0.65 + 0.65 * i, -1.1, 0)), i, " rightPost TRUE" if i == 1 else ""))
+    w('GuardBay { translation %s name "carter arriere %d" width %g height 2.0%s }' % (
+        f((-LATHE_X + LATHE_X * i, -1.1, 0)), i, LATHE_X, " rightPost TRUE" if i == 1 else ""))
 w(solid("armoire UR + pupitre", (-1.25, 1.75, 0), [
     profile((0.04, 0.04, 1.0), (0, 0, 0.5)), box((0.5, 0.3, 0.04), ALU, (0, 0, 0.02)),
     box((0.47, 0.25, 0.45), app("0.85 0.86 0.86", 0.4, 0.2), (0, 0, 0.85)),
@@ -415,6 +538,23 @@ w("""DEF API Robot {
     %s
   ]
 }""" % "\n    ".join(dev))
+
+# =============================================================== marqueurs de collision (déplacés par l'automate
+# sur les points de contact du robot ; créés d'avance pour apparaître aussi dans l'animation HTML5)
+for k in range(8):
+    w('DEF COLL_%d Pose { translation %g -7.9 -2 children [ Shape { castShadows FALSE appearance PBRAppearance { '
+      'baseColor 1 0 0 emissiveColor 1 0.1 0.1 transparency 0.35 roughness 1 metalness 0 } geometry Sphere { '
+      'radius 0.035 subdivision 2 } } ] }' % (k, 0.2 * k))
+
+# obstacles pour le vérificateur hors ligne (pièces en alvéoles comprises)
+for crate_name, cells in (("BRUTS", range(12)), ("FINIES", range(12))):
+    for i in cells:
+        c = cell_pos(crate_name, i)
+        OBST.append(dict(owner="piece %s %d" % (crate_name, i), tag="part", kind="cyl", dims=[PART_R, PART_L], c=list(c),
+                         R=[[1, 0, 0], [0, 1, 0], [0, 0, 1]], cell=[crate_name, i]))
+with open(os.path.join(HERE, "..", "worlds", "obstacles.json"), "w") as fh:
+    json.dump(dict(obstacles=OBST, tool=[dict(kind=k, dims=list(d), pos=list(p_), rot=r) for k, d, p_, r in TOOL_COL],
+                   lathe_x=LATHE_X, tur_park=TUR_PARK), fh, indent=0)
 
 with open(OUT, "w") as fh:
     fh.write("\n".join(out) + "\n")

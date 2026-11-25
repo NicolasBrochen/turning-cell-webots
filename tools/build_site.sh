@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Builds site/: Webots HTML5 animation of the turning cell (interactive 3D, plays in any browser).
-#   tools/build_site.sh            (START=0 END=228 simulated seconds by default: 2 lathes, dual-gripper swaps, crate exchange)
+#   tools/build_site.sh            (START=0 END=246 simulated seconds by default: 2 lathes, dual-gripper swaps, crate exchange)
 #   NO_RECORD=1 tools/build_site.sh  -> only redo the page layout (description, index, thumbnail)
 # Publish on GitHub Pages:  git subtree push --prefix site origin gh-pages
 set -eu
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 . "$ROOT/tools/webots_env.sh"     # Webots for Windows when available (WEBOTS_MODE=linux forces Linux)
 START=${START:-0}
-END=${END:-228}
+END=${END:-246}
 STEP=${STEP:-16}                  # time step of the recording (ms): 16 ms keeps the animation file small
 if [ -z "${NO_RECORD:-}" ]; then
   prepare_run_root
@@ -32,7 +32,7 @@ WBT
     rm -f "$ROOT"/site/turning_cell.{html,css,json,w3d}
     cp "$RUN_ROOT"/site/turning_cell.{html,css,json,w3d} "$ROOT/site/"
   fi
-  grep -E "gripped|contact|failed|Crates exchanged|Traceback|Error" "$ROOT/site/.build.log" | tail -n 40 || true
+  grep -E "COLLISION|gripped|contact|failed|Crates exchanged|Traceback|Error" "$ROOT/site/.build.log" | tail -n 40 || true
 fi
 rm -f "$ROOT/site/.build.log"
 python3 - "$ROOT/site/turning_cell.html" <<'PY'
@@ -40,7 +40,7 @@ import re, sys
 p = sys.argv[1]
 s = open(p, encoding="utf-8").read()
 desc = ("<p><strong>Robotic turning cell</strong> (Webots R2025a): two CNC lathes facing each other, tended by a "
-        "UR10e with a dual SCHUNK-type gripper and a 6-axis force/torque sensor.<br><br>"
+        "UR10e with a dual SCHUNK-type gripper on a 90° bent bracket and a 6-axis force/torque sensor.<br><br>"
         "Blanks from a crate, unload + load of each lathe in a single visit (dual gripper), force-guarded seating "
         "in the chuck, turning cycle, finished parts to the output crate, crate exchange by an operator with laser "
         "scanners slowing then stopping the robot.<br>"

@@ -9,3 +9,4 @@ controllers/mcp_robot/
 .media_tmp/
 site/.build.log
 .DS_Store
+.sim_check.log

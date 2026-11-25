@@ -2,8 +2,9 @@
 
 # Cellule de tournage robotisée — Webots R2025a
 
-Deux tours CNC face à face, servis par un **Universal Robots UR10e**. Le robot porte une **double pince de type SCHUNK**
-(deux pinces parallèles dos à dos) montée derrière un **capteur d'effort 6 axes**. Les bruts arrivent dans une caisse,
+Deux tours CNC face à face, à 1,6 m l'un de l'autre, servis par un **Universal Robots UR10e**. Le robot porte une
+**double pince de type SCHUNK** (deux pinces parallèles sur un support coudé à 90°, chacune à 45° de l'axe de la bride)
+montée derrière un **capteur d'effort 6 axes**. Les bruts arrivent dans une caisse,
 et les pièces tournées repartent dans une seconde caisse. Quand la caisse de bruts est vide, un opérateur vient échanger
 les caisses. Le côté avant, ouvert et collaboratif, est surveillé par deux scrutateurs laser (surveillance de vitesse
 et de distance).
@@ -19,7 +20,7 @@ et de distance).
 ## Visualiser sans Webots
 
 - **Animation 3D interactive** : [nicolasbrochen.github.io/turning-cell-webots](https://nicolasbrochen.github.io/turning-cell-webots/).
-  C'est un export HTML5 de Webots de 3 min 48 s de production (les deux tours, les échanges de pinces, l'échange des
+  C'est un export HTML5 de Webots de 4 min 06 s de production (les deux tours, les échanges de pinces, l'échange des
   caisses) : on peut tourner autour, zoomer et avancer dans le temps. Fichiers dans [`site/`](site/), publiés depuis la
   branche `gh-pages` (`git subtree push --prefix site origin gh-pages`).
 - **Vidéos** : [`docs/`](docs/).
@@ -40,10 +41,12 @@ webots worlds/tournage.wbt
    capteurs de bout de doigt confirment la prise (force de serrage lue sur les moteurs de doigts, ~140 N par doigt).
 2. **Service d'un tour en une seule visite**, grâce à la double pince :
    - la pince 2 entre par la porte ouverte, saisit la pièce tournée, l'automate ouvre le mandrin, le robot extrait la pièce ;
-   - un demi-tour du poignet 3 présente la pince 1 devant le mandrin : le brut est poussé le long de l'axe de broche en
+   - un demi-tour du poignet 3 présente la pince 1 devant le mandrin (le support coudé fait permuter les deux
+     pinces) : le brut est poussé le long de l'axe de broche en
      **mode effort**, et le capteur d'effort du poignet arrête le mouvement quand la pièce touche la butée du mandrin
      (seuil 40 N) ;
-   - l'automate serre le mandrin, la pince s'ouvre, le robot sort de la machine et signale « dégagé ».
+   - l'automate serre le mandrin, la pince s'ouvre, le robot sort de la machine, revient au-dessus de la table et
+     signale « dégagé » (la porte ne se ferme qu'une fois le bras hors de son chemin).
 3. **Cycle de tournage** (automate) : la porte se ferme et se verrouille, la broche démarre, la tourelle approche et
    fait une passe avec arrosage. La surépaisseur disparaît au fur et à mesure de l'avance de l'outil. Puis la tourelle
    se retire, la broche s'arrête et la porte s'ouvre.
@@ -59,7 +62,7 @@ webots worlds/tournage.wbt
 | Élément | Source |
 |---|---|
 | Robot | `UR10e` (bibliothèque officielle Webots, Universal Robots) sur socle acier |
-| Double pince | Construite pour ce projet : capteur d'effort 6 axes, adaptateur alu, 2 pinces parallèles (corps type SCHUNK EGK), doigts motorisés sur glissières, mors en V avec capteurs de contact, LED d'état. SCHUNK ne fournit pas de modèle Webots |
+| Double pince | Construite pour ce projet : capteur d'effort 6 axes, plaque d'adaptation alu, support coudé à 90° avec goussets, 2 pinces parallèles (corps type SCHUNK EGK) à ±45° de l'axe de la bride, doigts motorisés sur glissières, patins avec capteurs de contact, LED d'état. SCHUNK ne fournit pas de modèle Webots. Géométrie dans [`dual_gripper.py`](controllers/ur_tending/dual_gripper.py) |
 | Tours CNC | Construits pour ce projet (aucun tour dans la bibliothèque Webots) : banc fonte, carénage, porte coulissante automatique vitrée, poupée, mandrin 3 mors (mors mobiles), banc incliné à 45°, tourelle 8 postes avec plaquette, arrosage, pupitre CNC, colonne lumineuse, convoyeur et bac à copeaux |
 | Caisses | Construites pour ce projet : bacs plastique 400×600×180 (type KLT) avec nervures, poignées et 12 alvéoles |
 | Pièces | Brut Ø50 × 90 mm → arbre étagé Ø40 / Ø30 (la zone serrée reste brute) |
@@ -89,6 +92,31 @@ La géométrie statique est fusionnée par matériau en `IndexedFaceSet` (même 
   est enfoncé.
 - **Colonnes lumineuses** sur chaque tour (vert = tournage, orange = attente robot, rouge = défaut).
 
+## Collisions
+
+Les machines, la table, les caisses et leurs alvéoles, le robot (corps du UR10e, capteur d'effort, support coudé,
+pinces, doigts) ont des **volumes de collision** (`boundingObject`) : un contact est un vrai contact du moteur physique.
+
+- **Dans Webots** : *View > Optional Rendering > Show All Bounding Objects* affiche les volumes de collision, et
+  *Show Contact Points* affiche chaque contact en direct. Les portes, mandrins, mors et tourelles des tours sont des
+  solides séparés : leurs volumes de collision suivent leurs mouvements.
+- **Surveillance des collisions** (automate de cellule) : à chaque pas de temps, l'automate lit les points de contact
+  du robot. Le seul contact attendu est un patin de doigt sur la pièce en cours de prise. Tout autre contact est une
+  collision : une sphère rouge est posée au point de contact, une ligne rouge `COLLISION #n: <partie du robot> <->
+  <obstacle>` s'affiche dans la vue 3D et l'événement est écrit dans la console. Les marqueurs existent dès le
+  départ, ils apparaissent donc aussi dans l'animation HTML5.
+- **`tools/sim_check.sh`** : lance la cellule dans Webots sans rendu (240 s de production par défaut) et liste les
+  collisions, les prises et les contacts d'effort ; code de sortie 1 en cas de collision.
+- **`tools/check_collisions.py`** (hors ligne, nécessite numpy : `uv run --no-project --with numpy
+  tools/check_collisions.py`) : rejoue le cycle du robot avec la même IK et les mêmes ordres que les contrôleurs, et
+  mesure la distance entre le robot (pièces portées comprises) et chaque volume de collision (exportés par
+  `tools/gen_world.py` dans `worlds/obstacles.json`), y compris les collisions de l'outil avec le bras. C'est avec lui
+  qu'ont été choisies l'orientation de la pince dans les tours et les configurations de départ. Résultat actuel :
+  aucune collision, la plus petite distance est celle des doigts près des parois de caisse (> 7 mm).
+
+La base du UR10e est orientée pour que sa position zéro (bras tendu) pointe vers l'arrière libre, et la mise en route
+replie le bras avant de tourner la base : rien n'est balayé sur le chemin de la position de repos.
+
 ## Clavier (cliquer d'abord dans la vue 3D)
 
 | Touche | Action |
@@ -108,7 +136,10 @@ controllers/
   cell_plc/cell_plc.py          automate de cellule (superviseur) : tours, caisses, ordonnancement, échanges, sécurités, opérateur
   ur_tending/ur_tending.py      UR10e : mouvements articulaires / linéaires / gardés en effort, pinces, transport des pièces
   ur_tending/ur10e_kin.py       cinématique exacte du UR10e (relevée dans UR10e.proto) + IK numérique 6 ddl, sans dépendance
-tools/gen_world.py              génère worlds/tournage.wbt
+  ur_tending/dual_gripper.py    géométrie de la double pince coudée (TCP), orientation de la base du robot
+tools/gen_world.py              génère worlds/tournage.wbt (+ worlds/obstacles.json, volumes de collision)
+tools/check_collisions.py       vérification hors ligne des collisions sur tout le cycle du robot
+tools/sim_check.sh              simulation Webots sans rendu + rapport de collisions
 tools/build_site.sh             animation 3D HTML5 -> site/ (GitHub Pages)
 tools/build_media.sh            vidéos, GIF et images -> docs/
 tools/webots_env.sh             choix du Webots (Windows sous WSL, sinon Linux)
@@ -122,10 +153,11 @@ mouvement articulaire, un mouvement linéaire, un mouvement gardé en effort, un
 
 Cinématique :
 - **IK :** numérique (moindres carrés amortis, erreur d'orientation exacte).
-- **Orientation du poignet :** la pince est orientée pour que le poignet reste toujours du côté du robot (bride vers
-  le bas aux tours, dos à la base aux caisses).
-- **Configurations de départ :** une par poste (base tournée vers le tour, coude en haut, poignet 2 à ±90°), loin de
-  la singularité de poignet UR. Passer d'une pince à l'autre ne demande qu'un demi-tour du poignet 3.
+- **Orientation du poignet :** avec le support coudé, la normale de la bride est à 45° de la direction d'approche.
+  Dans les tours, la pince inactive pointe vers le haut et vers le fond de la machine (la bride et le poignet restent
+  bas et du côté du robot) ; aux caisses, elle pointe à l'opposé de la base.
+- **Configurations de départ :** une par poste (base tournée vers le tour, coude en haut), trouvées avec le
+  vérificateur de collisions hors ligne. Passer d'une pince à l'autre ne demande qu'un demi-tour du poignet 3.
 
 ## Simplifications
 

@@ -6,6 +6,7 @@ The cell PLC (cell_plc) sends jobs as lists of steps (JSON, channel 1); the robo
 Steps:
   {"t": "joint", "g": 1|2, "p": [x,y,z], "a": [approach], "x": [finger axis], "v": scale}  joint move (IK, world frame)
   {"t": "lin",   "g": ..., "p": ..., "a": ..., "x": ..., "v": m/s}                     linear Cartesian move
+  {"t": "home"}                                                                          joint move to Q_HOME
   {"t": "force", "g": ..., "dir": [..], "contact": s_c, "max": s_max, "F": N, "v": m/s}
         force-guarded move along `dir`: the wrist F/T sensor (emulated: spring k in contact beyond s_c) stops the
         move once |F| >= F (seating a part against the chuck stop, setting a part down in the crate)
@@ -21,12 +22,19 @@ import math
 
 from controller import Supervisor
 
+from dual_gripper import base_q, tcp_matrix
 from ur10e_kin import fk, ik, pose, wrap_near
 
 JOINTS = ["shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint", "wrist_1_joint", "wrist_2_joint", "wrist_3_joint"]
-TCP = {1: [[0, 0, 1, 0.335], [0, -1, 0, 0.082], [1, 0, 0, 0], [0, 0, 0, 1]],
-       2: [[0, 0, -1, -0.335], [0, 1, 0, 0.082], [1, 0, 0, 0], [0, 0, 0, 1]]}
-Q_HOME = [1.299, -1.478, 1.594, -0.116, 1.299, -1.571]  # above the crate table, elbow up, wrist 2 at 74°
+TCP = {1: tcp_matrix(1), 2: tcp_matrix(2)}      # bent dual gripper (dual_gripper.py)
+Q_HOME = base_q([1.299, -1.478, 1.594, -0.116, 1.299, -1.571])  # above the crate table, elbow up, wrist 2 at 74°
+Q_FOLD = [-1.57, 2.0, 0.4, -1.57, -1.571]                 # compact pose (joints 2..6) for the start-up rotation
+
+
+def start_path(pan0):
+    return [[pan0] + Q_FOLD, [Q_HOME[0]] + Q_FOLD, list(Q_HOME)]
+
+
 V_JOINT = 1.4           # rad/s (average, quintic profile)
 K_CONTACT = 40000.0     # N/m: stiffness of the emulated contact seen by the F/T sensor
 GRIP_MIN_F = 50.0       # N per finger to accept a grip
@@ -210,8 +218,8 @@ class Tending(Supervisor):
         t = st["t"]
         q0 = list(self.q_cmd)
         st["_t"] = 0.0
-        if t == "joint":
-            q1 = self.solve(self.target(st), st["g"], q0, st.get("seed"))
+        if t in ("joint", "home"):
+            q1 = list(Q_HOME) if t == "home" else self.solve(self.target(st), st["g"], q0, st.get("seed"))
             if q1 is None:
                 self.send(evt="error", msg="IK failed (joint) %s" % st["p"])
                 q1 = q0
@@ -288,7 +296,7 @@ class Tending(Supervisor):
             return True
         k = self.override
         st["_t"] += self.dt * k
-        if t == "joint":
+        if t in ("joint", "home"):
             s = quintic(st["_t"] / st["_T"])
             self.q_cmd = [a + (b - a) * s for a, b in zip(st["_q0"], st["_q1"])]
             return st["_t"] >= st["_T"]
@@ -360,8 +368,11 @@ class Tending(Supervisor):
         self.q_cmd = [s.getValue() for s in self.sensors]
         self.steps = [{"t": "_home"}]
         ready = False
+        # start-up: fold the arm first (base joint kept still), turn the base folded, then go to Q_HOME: the
+        # stretched-out zero pose must not sweep through a lathe
+        home_path = start_path(self.q_cmd[0])
         home_t, home_q0 = 0.0, list(self.q_cmd)
-        T_home = max(1.0, max(abs(a - b) for a, b in zip(home_q0, Q_HOME)) / 0.8)
+        T_home = max(1.0, max(abs(a - b) for a, b in zip(home_q0, home_path[0])) / 0.8)
         self.set_fingers(1, 0.0)
         self.set_fingers(2, 0.0)
         while self.step(self.dt_ms) != -1:
@@ -369,8 +380,12 @@ class Tending(Supervisor):
             if not ready:
                 home_t += self.dt
                 s = quintic(home_t / T_home)
-                self.q_cmd = [a + (b - a) * s for a, b in zip(home_q0, Q_HOME)]
-                if home_t >= T_home:
+                self.q_cmd = [a + (b - a) * s for a, b in zip(home_q0, home_path[0])]
+                if home_t >= T_home and len(home_path) > 1:
+                    home_q0 = home_path.pop(0)
+                    home_t = 0.0
+                    T_home = max(1.0, max(abs(a - b) for a, b in zip(home_q0, home_path[0])) / 0.8)
+                elif home_t >= T_home:
                     ready = True
                     self.steps = []
                     self.send(evt="ready")

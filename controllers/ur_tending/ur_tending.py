@@ -27,7 +27,7 @@ from ur10e_kin import fk, ik, pose, wrap_near
 
 JOINTS = ["shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint", "wrist_1_joint", "wrist_2_joint", "wrist_3_joint"]
 TCP = {1: tcp_matrix(1), 2: tcp_matrix(2)}      # bent dual gripper (dual_gripper.py)
-Q_HOME = base_q([-1.191, -1.79, -1.74, -0.83, 2.29, 0.51])  # above the crate table (same as the crate seed of gripper 1)
+Q_HOME = base_q([-1.2, -1.806, -1.681, -1.033, 2.337, 0.274])  # above the crate table (same as the crate seed of gripper 1)
 Q_FOLD = [-1.57, 2.0, 0.4, -1.57, -1.571]                 # compact pose (joints 2..6) for the start-up rotation
 
 

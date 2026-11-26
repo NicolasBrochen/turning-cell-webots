@@ -63,7 +63,7 @@ webots worlds/tournage.wbt
 |---|---|
 | Robot | `UR10e` (bibliothèque officielle Webots, Universal Robots) sur socle acier |
 | Double pince | 2 × **SCHUNK EGK 40-MB-M-B** (ID 1491762) : corps et mors de base issus du fichier STEP SCHUNK ([`cad/`](cad/), converti en OBJ par [`tools/step_to_obj.py`](tools/step_to_obj.py)), mors sur glissières motorisées avec la course réelle (6 mm par mors) et l'effort de serrage réel (140 N). Construits pour ce projet : capteur d'effort 6 axes, plaque d'adaptation, support coudé à 90° avec goussets (pinces à ±45° de l'axe de la bride), doigts sur mesure (pince 1 pour les bruts Ø50, pince 2 pour l'extrémité Ø30 des pièces finies) avec patins et capteurs de contact. Géométrie dans [`dual_gripper.py`](controllers/ur_tending/dual_gripper.py) |
-| Tours CNC | Construits pour ce projet (aucun tour dans la bibliothèque Webots) : banc fonte, carénage, porte coulissante automatique vitrée, poupée, mandrin 3 mors (mors mobiles), banc incliné à 45°, tourelle 8 postes avec plaquette, arrosage, pupitre CNC, colonne lumineuse, convoyeur et bac à copeaux |
+| Tours CNC | 2 × **Haas ST-20**, d'après le modèle 3D du constructeur (STEP converti par [`tools/haas_to_meshes.py`](tools/haas_to_meshes.py) en 17 maillages OBJ groupés par corps mobile, ≈ 211 000 triangles par tour, sur socle de mise à niveau de 95 mm). Animés par l'automate : porte coulissante (0,72 m vers la poupée), broche et mandrin 3 mors 8" (mors découpés du corps, course radiale), chariot Z et tourelle 12 postes sur la glissière X du banc incliné à 55°, arrosage. Ajoutés pour ce projet : vitre, porte-outil et plaquette, colonne lumineuse |
 | Caisses | Construites pour ce projet : bacs plastique 400×600×180 (type KLT) avec nervures, poignées et 12 alvéoles |
 | Pièces | Brut Ø50 × 90 mm → arbre étagé Ø40 / Ø30 (la zone serrée reste brute) |
 | Opérateur | `Pedestrian` (bibliothèque officielle), marche animée par l'automate avec les tables de pas officielles |
@@ -98,7 +98,7 @@ Les machines, la table, les caisses et leurs alvéoles, le robot (corps du UR10e
 pinces, doigts) ont des **volumes de collision** (`boundingObject`) : un contact est un vrai contact du moteur physique.
 
 - **Dans Webots** : *View > Optional Rendering > Show All Bounding Objects* affiche les volumes de collision, et
-  *Show Contact Points* affiche chaque contact en direct. Les portes, mandrins, mors et tourelles des tours sont des
+  *Show Contact Points* affiche chaque contact en direct. Les portes, mandrins, mors, chariots et tourelles des tours sont des
   solides séparés : leurs volumes de collision suivent leurs mouvements.
 - **Surveillance des collisions** (automate de cellule) : à chaque pas de temps, l'automate lit les points de contact
   du robot. Le seul contact attendu est un patin de doigt sur la pièce en cours de prise. Tout autre contact est une
@@ -111,10 +111,10 @@ pinces, doigts) ont des **volumes de collision** (`boundingObject`) : un contact
   tools/check_collisions.py`) : rejoue le cycle du robot avec la même IK et les mêmes ordres que les contrôleurs, et
   mesure la distance entre le robot (pièces portées comprises) et chaque volume de collision (exportés par
   `tools/gen_world.py` dans `worlds/obstacles.json`), y compris les collisions de l'outil avec le bras. C'est avec lui
-  qu'ont été choisies l'orientation de la pince dans les tours et les configurations de départ. Résultat actuel :
-  aucune collision ; les plus petites distances calculées sont 4 mm entre le support et les parois de caisse (le
-  vérificateur modélise les tôles minces par des sphères de 12 mm : environ 9 mm en réalité) et 5 mm entre un brut
-  porté et la porte fermée de l'autre tour.
+  qu'ont été choisies l'orientation de la pince dans les tours et les configurations de départ. Résultat actuel
+  (tours Haas ST-20) : aucune collision ; les plus petites distances calculées sont 5 mm entre le support et les
+  parois de caisse (le vérificateur modélise les tôles minces par des sphères de 12 mm), 9 mm entre le support et
+  l'avant-bras, 21 à 22 mm avec le bâti du tour et les mors.
 
 La base du UR10e est orientée pour que sa position zéro (bras tendu) pointe vers l'arrière libre, et la mise en route
 replie le bras avant de tourner la base : rien n'est balayé sur le chemin de la position de repos.
@@ -164,10 +164,11 @@ Cinématique :
 - **Optimisation des mouvements** ([`tools/optimize_motion.py`](tools/optimize_motion.py)) : les gros axes (base,
   épaule, coude) doivent bouger le moins possible, le poignet se chargeant des orientations. Pour chaque orientation
   de la pince, l'IK donne plusieurs configurations du bras ; chacune est vérifiée sans collision sur ses tâches, puis
-  les meilleures combinaisons sont rejouées sur tout le cycle et notées sur le déplacement de J1 + J2 + J3. Résultat :
-  la même famille de configuration (coude sous la ligne épaule–poignet) aux tours et aux caisses, le coude ne se
-  retourne plus entre les postes ; point de recul à 0,25 m devant la porte. Sur le cycle de 246 s, le déplacement de
-  J1 + J2 + J3 passe de 316 à 240 rad (coude : 185 → 92 rad), sans collision. Passer d'une pince à l'autre ne
+  les meilleures combinaisons sont rejouées sur tout le cycle et notées sur le déplacement de J1 + J2 + J3. Avec les
+  tours en boîtes, cela donnait la même famille de configuration aux tours et aux caisses (J1 + J2 + J3 : 316 → 240
+  rad). L'ouverture de porte du Haas ST-20 est plus étroite (0,69 m) : dans cette famille l'avant-bras heurtait le
+  montant droit, les tours sont donc servis avec l'autre configuration d'épaule, chaque visite entrant et sortant par
+  la pose de repos (point de recul à 0,45 m devant la porte). Passer d'une pince à l'autre ne
   demande qu'un demi-tour du poignet 3.
 
 ## Simplifications
@@ -183,3 +184,7 @@ Cinématique :
 
 Modèle CAO SCHUNK EGK 40-MB-M-B : © SCHUNK GmbH & Co. KG, diffusé par CADENAS sous licence CC BY-ND 4.0 (`cad/`
 contient le fichier STEP d'origine, `protos/meshes/egk40/` la même géométrie convertie en OBJ, sans modification).
+
+Tour Haas ST-20 : maillages simplifiés dérivés du modèle 3D téléchargeable du constructeur (Haas Automation, Inc.,
+haascnc.com ; le STEP d'origine n'est pas inclus). Haas et ST-20 sont des marques de Haas Automation, Inc. Projet
+étudiant indépendant, sans affiliation ni approbation de Haas Automation ; retrait sur simple demande.

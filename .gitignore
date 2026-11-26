@@ -10,3 +10,7 @@ controllers/mcp_robot/
 site/.build.log
 .DS_Store
 .sim_check.log
+
+# CAO fournisseur volumineuse (Haas ST-20) : non versionnée, voir README
+cad/*.zip
+cad/haas_st20/

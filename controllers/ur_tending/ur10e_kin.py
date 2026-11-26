@@ -150,7 +150,8 @@ def ik(G, seed, tcp=None, iters=60, tol=1e-5, lam=0.02):
 
 
 def wrap_near(q, seed):
-    """For each ±2π joint, pick the 2π-equivalent angle closest to the seed that stays within LIMITS."""
+    """For each ±2π joint, pick the 2π-equivalent angle closest to the seed that stays within LIMITS (on a tie, e.g. the
+    half turn of wrist 3 when switching grippers, the one closest to 0: most range left for the next moves)."""
     out = []
     for j, (qi, si) in enumerate(zip(q, seed)):
         lo, hi = LIMITS[j]
@@ -159,7 +160,7 @@ def wrap_near(q, seed):
             continue
         cands = [qi + 2 * math.pi * k for k in range(-3, 4)]
         cands = [c for c in cands if lo <= c <= hi]
-        out.append(min(cands, key=lambda c: abs(c - si)) if cands else max(lo, min(hi, qi)))
+        out.append(min(cands, key=lambda c: (round(abs(c - si), 3), abs(c))) if cands else max(lo, min(hi, qi)))
     return out
 
 

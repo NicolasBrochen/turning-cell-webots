@@ -4,8 +4,10 @@
 Implantation (m, ENU, z vers le haut) :
   - UR10e sur socle en (0, 0), base à 0.80 m. Outil : capteur d'effort 6 axes + double pince SCHUNK (2 pinces
     parallèles opposées, doigts motorisés avec capteurs de force au bout des doigts).
-  - Tour A : façade en x = -0.65 tournée vers +x. Tour B : façade en x = +0.65 tournée vers -x (face à face).
-    Broche horizontale parallèle à la façade (axe y) ; mandrin 3 mors, porte coulissante automatique.
+  - Tour A : façade en x = -0.80 tournée vers +x. Tour B : façade en x = +0.80 tournée vers -x (symétrie centrale).
+    Tours Haas ST-20 (maillages du STEP officiel Haas, tools/haas_to_meshes.py) : broche horizontale parallèle à la
+    façade (axe y), mandrin 8" 3 mors, porte coulissante automatique (ouverture vers la poupée), tourelle BOT 12
+    postes sur glissière X inclinée à 55° et chariot Z, bac d'arrosage, convoyeur à copeaux, pupitre CNC.
   - Table à caisses côté opérateur (y ≈ 0.85) : caisse des bruts (x = -0.25) et caisse des pièces finies (x = +0.25),
     12 alvéoles chacune (3 x 4).
   - Côté opérateur ouvert (zone collaborative) surveillé par 2 scrutateurs laser ; carter fixe à l'arrière.
@@ -36,10 +38,19 @@ PROTOS = [
 # ---------------------------------------------------------------- géométrie partagée avec cell_plc.py
 ROBOT_Z = 0.80
 LATHE_X = 0.80                       # plan des façades (tours écartés de 1.60 m)
-TUR_PARK = (-0.72, 0.10, 1.42)       # tourelle en position de repos (repère tour)
 CX, CZ = -0.40, 1.10                 # axe de broche (repère tour)
-CHUCK_Y = -0.46                      # centre du mandrin (corps de y -0.52 à -0.40)
-JAW_FACE = -0.355                    # face avant des mors
+CHUCK_FACE = -0.40                   # face avant du corps de mandrin (= appui de la pièce, SEAT_FRONT)
+JAW_FACE = -0.358                    # face avant des mors
+# Haas ST-20 : repères des groupes mobiles (repère tour, voir protos/meshes/haas_st20/haas_st20.json)
+DOOR_CLOSED = (-0.56, -0.582, 0.717)  # origine du groupe porte, porte fermée
+DOOR_TRAVEL = 0.722                  # course d'ouverture selon -y (vers la poupée)
+JAW_DIRS = ((-0.0386, 0.9993), (-0.8459, -0.5333), (0.8888, -0.4583))   # directions radiales des mors (x, z)
+JAW_R0 = 0.0255                      # rayon de serrage des mors dans la pose CAO
+TUR0 = (-0.6622, 0.3151, 1.474)      # chariot / tourelle en pose CAO : axe de tourelle, face +y du disque
+X_DIR = (-0.5737, 0.0, 0.8191)       # glissière X (55°) : +X = s'éloigne de la broche
+TUR_AXIS_R = 0.4568                  # distance axe de tourelle - axe de broche (pose CAO)
+TOOL_R, TOOL_DY = 0.305, -0.128      # pointe d'outil : vers la broche depuis l'axe de tourelle, décalage axial (y)
+TUR_PARK = (0.0, 0.0)                # position de repos (Z chariot selon +y, X glissière) par rapport à la pose CAO
 TABLE = (0.0, 0.85, 0.70)            # centre, hauteur du dessus
 CRATES = {"BRUTS": (-0.25, 0.85), "FINIES": (0.25, 0.85)}
 CELL_X = (-0.12, 0.0, 0.12)
@@ -155,143 +166,246 @@ def floor_line(p0, p1, width, color):
                                                                          0.002), (0, 0, 1, math.atan2(dy, dx)), cs=False))
 
 
-# zone collaborative (scrutateur) : champ de protection (rouge) et d'avertissement (orange)
+# zone collaborative (scrutateur) : champ de protection (rouge) et d'avertissement (orange), entre les plans de
+# façade des tours (le bac d'arrosage et le convoyeur du tour A descendent jusqu'à x = -0.85)
+ZX = LATHE_X
 for (y0, y1, col) in ((1.40, 2.0, "0.85 0.1 0.1"), (2.0, 2.8, "1 0.55 0")):
-    floor_line((-0.9, y0), (0.9, y0), 0.05, col)
-    floor_line((-0.9, y1), (0.9, y1), 0.05, col)
-    floor_line((-0.9, y0), (-0.9, y1), 0.05, col)
-    floor_line((0.9, y0), (0.9, y1), 0.05, col)
-for k in range(10):  # hachures jaune/noir autour de la cellule
-    floor_line((-2.7 + 0.55 * k, -1.6), (-2.45 + 0.55 * k, -1.6), 0.1, YELLOW)
-floor_line((-2.8, 3.2), (2.8, 3.2), 0.1, "0.1 0.65 0.2")
-floor_line((-2.8, 3.9), (2.8, 3.9), 0.1, "0.1 0.65 0.2")
-floor_line((-2.8, -1.6), (-2.8, 3.2), 0.1, YELLOW)
-floor_line((2.8, -1.6), (2.8, 3.2), 0.1, YELLOW)
+    floor_line((-ZX, y0), (ZX, y0), 0.05, col)
+    floor_line((-ZX, y1), (ZX, y1), 0.05, col)
+    floor_line((-ZX, y0), (-ZX, y1), 0.05, col)
+    floor_line((ZX, y0), (ZX, y1), 0.05, col)
+# limites de la cellule : les Haas ST-20 vont jusqu'à |x| = 2.99 (bac d'arrosage) et y = ±2.37 (convoyeurs)
+CXL, CY0 = 3.2, -2.6
+for k in range(12):  # hachures jaune/noir à l'arrière de la cellule
+    floor_line((-3.15 + 0.55 * k, CY0), (-2.9 + 0.55 * k, CY0), 0.1, YELLOW)
+floor_line((-CXL, 3.2), (CXL, 3.2), 0.1, "0.1 0.65 0.2")
+floor_line((-CXL, 3.9), (CXL, 3.9), 0.1, "0.1 0.65 0.2")
+floor_line((-CXL, CY0), (-CXL, 3.2), 0.1, YELLOW)
+floor_line((CXL, CY0), (CXL, 3.2), 0.1, YELLOW)
 w('Solid { name "marquage sol" children [ %s ] locked TRUE }' % render(marks))
 
 
-# =============================================================== tour CNC (repère local : façade en x = 0 vers +x,
-# broche selon y, mandrin côté y négatif)
+# =============================================================== maillages (STEP -> OBJ)
+MESH = "../protos/meshes/egk40/%s.obj"
+EGK_ROT = (0, 0, 1, -math.pi / 2)                  # EGK axes (y = approach, z = jaws) -> gripper local frame
+HAAS_MESH = "../protos/meshes/haas_st20/st20_%s.obj"
+HAAS = json.load(open(os.path.join(HERE, "..", "protos", "meshes", "haas_st20", "haas_st20.json")))
+# matériaux de la palette du convertisseur : (rugosité, métallicité)
+HAAS_PBR = {"white": (0.45, 0.1), "grey": (0.5, 0.35), "steel": (0.3, 0.85), "dark": (0.55, 0.3),
+            "black": (0.7, 0.0), "window": (0.08, 0.0)}
+
+
+def mesh(name, appearance):
+    return 'Pose { rotation %s children [ Shape { appearance %s geometry Mesh { url "%s" } } ] }' % (
+        f(EGK_ROT), appearance, MESH % name)
+
+
+SHADOW_MAX_TRI = 21845                             # au-delà, Webots ne projette pas l'ombre d'un Mesh (avertissement)
+
+
+def haas_mesh(fn):
+    """Shape du tour Haas (fichier st20_*.obj, sommets dans le repère de son groupe), apparence selon son matériau.
+    Pas d'ombre pour la vitre ni pour les maillages trop lourds (fontes, tôles intérieures, disque de tourelle) :
+    l'ombre au sol vient du carénage blanc."""
+    info = HAAS["files"][fn]
+    rough, metal = HAAS_PBR[info["material"]]
+    a = app(f(info["colour"]), rough, metal, transp=info["transparency"])
+    cs = info["transparency"] or info["triangles"] > SHADOW_MAX_TRI
+    return 'Shape {%s appearance %s geometry Mesh { url "%s" } }' % (
+        " castShadows FALSE" if cs else "", a, HAAS_MESH % fn[len("st20_"):-len(".obj")])
+
+
+def haas_group(group, part=None):
+    return [haas_mesh(fn) for fn in sorted(HAAS["files"]) if HAAS["files"][fn]["group"] == group
+            and (part is None or HAAS["files"][fn]["part"] == part)]
+
+
+# cohérence des constantes recopiées à la main avec le maillage généré
+_G = HAAS["groups"]
+assert all(abs(a - b) < 1e-3 for a, b in zip(DOOR_CLOSED, _G["door"]["origin"]))
+assert abs(DOOR_TRAVEL - _G["door"]["travel_open"]) < 1e-3
+assert all(abs(a - b) < 1e-3 for a, b in zip(TUR0, _G["turret"]["origin"]))
+assert all(abs(a - b) < 1e-3 for a, b in zip(X_DIR, _G["turret"]["x_slide_axis"]))
+assert abs(TUR_AXIS_R - _G["turret"]["turret_axis_distance_from_spindle_axis"]) < 1e-3
+assert all(abs(a - b) < 1e-3 for j, d in zip(_G["jaws"]["jaws"], JAW_DIRS) for a, b in zip(j["radial_dir_xz"], d))
+assert abs(CHUCK_FACE - HAAS["key_positions"]["chuck_body_front_y"]) < 1e-3
+assert abs(JAW_FACE - HAAS["key_positions"]["chuck_jaw_front_y"]) < 1e-3
+
+
+def bx(x0, x1, y0, y1, z0, z1):
+    """Boîte de collision donnée par ses bornes."""
+    return ("box", (x1 - x0, y1 - y0, z1 - z0), ((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), None)
+
+
+def ry_to(d):
+    """Rotation autour de y qui amène l'axe x local sur la direction d (dans le plan x-z)."""
+    return (0, 1, 0, math.atan2(-d[2], d[0]))
+
+
+def z_to(d):
+    """Rotation qui amène l'axe z local sur la direction d."""
+    n = math.sqrt(sum(v * v for v in d))
+    d = [v / n for v in d]
+    ax = (-d[1], d[0], 0.0)
+    s_ = math.hypot(ax[0], ax[1])
+    return (ax[0] / s_, ax[1] / s_, 0, math.acos(max(-1.0, min(1.0, d[2])))) if s_ > 1e-9 else (1, 0, 0, 0 if d[2] > 0 else math.pi)
+
+
+# =============================================================== tour CNC Haas ST-20 (repère local : façade en x = 0
+# vers +x, intérieur vers -x, broche selon y, mandrin côté y négatif ; sol machine en z = 0.095 sur une plinthe)
+U_TOOL = tuple(-v for v in X_DIR)                  # du centre de tourelle vers la broche (poste d'outil actif)
+N_X = (-X_DIR[2], 0.0, X_DIR[0])                   # N = X x y : normale à la glissière dans le plan x-z
+
+
+def on_x_slide(xc, yc, nc):
+    """Point du repère tourelle donné en coordonnées (X glissière, y, normale N = X x y)."""
+    return tuple(xc * X_DIR[i] + nc * N_X[i] + (yc if i == 1 else 0.0) for i in range(3))
+
+
+def slide_box(x0, x1, y0, y1, n0, n1):
+    """Boîte alignée sur la glissière X (bornes en X, y, N), repère tourelle / chariot."""
+    return ("box", (x1 - x0, y1 - y0, n1 - n0), on_x_slide((x0 + x1) / 2, (y0 + y1) / 2, (n0 + n1) / 2),
+            ry_to(X_DIR))
+
+
+def lathe_bati():
+    """Volumes de collision du bâti (repère tour), au plus près des maillages ; l'ouverture de porte (y -0.495..0.197,
+    z 0.79..1.975, plan x = -0.107) et l'ouverture du toit qui la prolonge (jusqu'à x = -0.56) restent libres."""
+    a = math.atan2(0.39, 0.5)                                       # carter Z incliné (talus à copeaux)
+    slant = ("box", (0.634, 0.825, 0.05), (-0.9 - 0.025 * math.sin(a), -0.1425, 0.955 - 0.025 * math.cos(a)),
+             (0, 1, 0, a))
+    b = math.atan2(1.08, 0.65)                                      # convoyeur à copeaux, partie inclinée
+    conv = ("box", (0.52, 1.26, 0.2), (-0.31, 1.725, 1.04), (1, 0, 0, b))
+    return [bx(-1.62, -0.06, -1.34, 1.25, 0.0, 0.095),                # plinthe de mise à niveau
+            bx(-2.06, -0.06, 0.83, 1.57, 0.0, 0.095),                 # plinthe sous le bac d'arrosage
+            bx(-1.60, -0.074, -1.33, 1.225, 0.095, 0.55),             # banc, armoire hydraulique, bac à copeaux
+            bx(-0.20, -0.057, -1.33, 1.225, 0.55, 0.79),              # plateaux avant (seuil de porte)
+            bx(-0.074, -0.02, -0.92, -0.74, 0.095, 0.32),             # pieds avant
+            bx(-0.074, -0.02, 0.65, 0.86, 0.095, 0.32),
+            bx(-0.64, -0.20, -0.555, 1.225, 0.55, 0.60),              # bord du bac à copeaux
+            bx(-2.06, -0.05, 0.84, 1.557, 0.095, 0.34),               # bac d'arrosage
+            bx(-2.19, -1.88, 0.90, 1.50, 0.34, 0.76),                 # pompe d'arrosage
+            bx(-1.93, -1.565, 0.85, 1.10, 0.34, 0.54),                # filtre du bac
+            bx(-1.60, -0.135, -1.33, -0.555, 0.55, 1.97),             # poupée : tôle avant, cloison, armoire électrique
+            bx(-0.60, -0.115, -0.556, -0.528, 1.848, 1.94),           # racleur haut (montant gauche de l'ouverture)
+            bx(-0.175, -0.115, -0.556, -0.528, 0.72, 1.94),           # racleur vertical
+            bx(-0.60, -0.20, -1.635, -1.33, 0.77, 1.70),              # capot moteur broche + porte d'embarreur
+            bx(-1.60, -1.235, -1.52, -1.33, 0.49, 1.70),              # armoire pneumatique
+            bx(-1.60, -1.27, -0.555, 1.0, 0.55, 2.03),                # garde arrière
+            bx(-1.27, -1.12, -0.555, 0.27, 1.10, 2.03),               # carter télescopique Z (partie verticale)
+            slant,                                                    # carter télescopique Z (partie inclinée)
+            bx(-1.27, -0.65, -0.555, 0.27, 0.55, 0.75),               # sous le carter incliné
+            bx(-1.27, -0.65, 0.27, 1.0, 0.55, 0.72),                  # sous le chariot
+            bx(-0.70, -0.65, 0.27, 1.0, 0.72, 0.80),
+            bx(-1.20, -1.10, -0.22, 1.06, 0.70, 0.76),                # glissière Z
+            bx(-0.545, -0.255, -0.16, 1.225, 0.55, 0.715),            # glissières de contre-pointe
+            bx(-0.53, -0.175, -0.555, -0.379, 0.55, 0.91),            # palpeur d'outils : embase
+            bx(-0.335, -0.14, -0.465, -0.423, 0.89, 1.275),           # palpeur d'outils : bras
+            bx(-0.26, -0.215, -0.555, -0.435, 1.23, 1.325),           # palpeur d'outils : tête
+            bx(-0.58, -0.22, 0.388, 0.86, 0.69, 1.165),               # contre-pointe
+            bx(-0.44, -0.36, 0.30, 0.39, 1.06, 1.14),                 # pointe tournante
+            bx(-0.345, -0.12, 0.95, 1.22, 1.70, 1.89),                # éclairage machine
+            bx(-0.12, -0.08, 0.197, 1.225, 0.79, 1.965),              # façade droite (côté contre-pointe)
+            bx(-0.65, -0.08, 0.197, 1.225, 1.90, 1.965),              # toit droit
+            bx(-0.65, -0.08, 1.15, 1.235, 0.70, 1.965),               # flanc droit
+            bx(-0.08, 0.064, 0.29, 0.77, 1.233, 1.761),               # pupitre CNC
+            bx(-0.08, 0.035, 0.30, 0.41, 1.15, 1.233),                # articulation du pupitre
+            bx(-0.10, 0.035, 0.266, 0.406, 1.761, 2.015),             # câble du pupitre (montée)
+            bx(-0.65, -0.10, 0.266, 0.406, 1.94, 2.015),              # câble du pupitre (sur le toit)
+            bx(-1.60, -0.555, -1.33, 0.36, 1.90, 2.055),              # toit principal
+            bx(-0.71, -0.555, -1.32, 0.30, 2.055, 2.095),             # rail haut de porte
+            bx(-1.25, -0.555, 0.279, 0.393, 2.055, 2.09),             # goulottes de câbles
+            bx(-0.185, -0.105, 0.379, 1.21, 1.965, 2.005),
+            bx(-1.31, -1.155, -0.46, 0.305, 2.055, 2.08),
+            bx(-1.465, -1.25, -1.44, -1.33, 1.70, 1.85),
+            bx(-1.25, -0.645, 0.34, 1.0, 1.91, 2.05),                 # toit au-dessus du chariot
+            bx(-1.25, -0.645, 1.0, 1.665, 0.55, 2.05),                # panneau arrière droit
+            bx(-0.57, -0.05, 1.225, 1.60, 0.095, 0.70),               # convoyeur à copeaux : bac
+            conv,
+            bx(-0.575, -0.05, 1.90, 2.37, 1.10, 1.70),                # convoyeur à copeaux : tête
+            bx(-0.18, -0.10, 0.71, 0.79, 1.965, 2.27)]                # colonne lumineuse
+
+
+def door_col():
+    """Porte (repère du groupe porte) : panneau avant, partie toit, poignée."""
+    o = DOOR_CLOSED
+    return [bx(-0.155 - o[0], -0.065 - o[0], 0.0, 0.809, 0.0, 1.258),
+            bx(0.0, -0.155 - o[0], 0.0, 0.809, 1.183, 1.258),
+            bx(-0.065 - o[0], -0.024 - o[0], 0.692, 0.732, 0.34, 0.68)]
+
+
 def lathe(prefix, pos, yaw, dynamic=True):
-    p = []
-    y0, y1, xb = -1.05, 1.35, -1.70
-    L, cy_ = y1 - y0, (y0 + y1) / 2
-    p.append(box((1.66, L - 0.04, 0.78), ANTHRA, (-0.85, cy_, 0.39)))                      # socle / banc
-    p.append(box((1.6, L - 0.1, 0.06), BLK, (-0.82, cy_, 0.03)))                          # plinthe
-    # carénage
-    p.append(box((0.04, L, 1.3), WHITE, (xb + 0.02, cy_, 1.43)))                           # dos
-    for yy in (y0, y1):
-        p.append(box((-xb, 0.04, 1.3), WHITE, (xb / 2, yy, 1.43)))                         # flancs
-    p.append(box((-xb, L, 0.04), WHITE, (xb / 2, cy_, 2.08)))                              # toit
-    # façade autour de l'ouverture de porte (y -0.70 .. 0.30, z 0.85 .. 1.67)
-    p.append(box((0.04, -0.72 - y0, 1.3), WHITE, (-0.02, (y0 - 0.72) / 2, 1.43)))
-    p.append(box((0.04, y1 - 0.32, 1.3), WHITE, (-0.02, (y1 + 0.32) / 2, 1.43)))
-    p.append(box((0.04, 1.04, 0.38), WHITE, (-0.02, -0.2, 1.88)))
-    p.append(box((0.04, 1.04, 0.1), WHITE, (-0.02, -0.2, 0.83)))
-    p.append(box((0.05, L, 0.16), ANTHRA, (-0.02, cy_, 0.86)))                             # bandeau bas
-    p.append(box((0.05, L, 0.05), app("0.1 0.35 0.75", 0.4, 0.2), (-0.02, cy_, 2.0)))      # liseré
-    p.append(box((0.06, 1.1, 0.03), ALU, (0.02, 0.35, 1.72)))                              # rail de porte
-    # intérieur visible : bac à copeaux, poupée, broche, banc incliné
-    p.append(box((1.3, 1.95, 0.02), app("0.18 0.19 0.2", 0.7, 0.4), (-0.75, -0.1, 0.86)))
-    p.append(box((1.1, 0.5, 0.75), LGREY, (-0.85, -0.78, 1.25)))
-    p.append(cyl_y(0.13, 0.05, LGREY, (CX, -0.545, CZ)))
-    p.append(box((0.5, 1.6, 0.06), ANTHRA, (-0.95, 0.15, 1.15), (0, 1, 0, -math.pi / 4)))   # banc incliné 45°
-    p.append(box((0.04, 1.9, 0.02), LED, (-1.5, -0.15, 2.0)))                              # éclairage machine
-    # pupitre CNC (à gauche de la porte)
-    p.append(box((0.1, 0.32, 0.75), ANTHRA, (0.07, -0.88, 1.45)))
-    p.append(box((0.01, 0.26, 0.22), app("0.1 0.25 0.45", 0.2, 0, emissive="0.15 0.35 0.6"), (0.125, -0.88, 1.62)))
-    for i in range(4):
-        for j in range(5):
-            p.append(box((0.01, 0.035, 0.02), app("0.75 0.75 0.75", 0.5), (0.125, -0.96 + 0.04 * j, 1.42 - 0.03 * i)))
-    p.append(cyl_x(0.02, 0.02, RED, (0.13, -0.78, 1.25)))
-    p.append(cyl_x(0.012, 0.015, app("0.1 0.8 0.2", 0.4), (0.13, -0.98, 1.25)))
-    # convoyeur à copeaux + bac
-    p.append(box((0.45, 0.6, 0.35), LGREY, (-0.7, y1 + 0.3, 0.45), (1, 0, 0, -0.35)))
-    p.append(box((0.6, 0.5, 0.45), app("0.1 0.3 0.7", 0.5, 0.2), (-0.7, y1 + 0.75, 0.25)))
-    # interrupteur de porte (interverrouillage) + capotage moteur broche
-    p.append(box((0.03, 0.05, 0.08), YEL, (0.02, -0.74, 1.25)))
     fr = frame(pos, (0, 0, 1, yaw))
-    # volumes de collision du bâti : banc, façade autour de l'ouverture de porte, pupitre, carénage, poupée,
-    # banc incliné, convoyeur à copeaux (l'ouverture de porte y -0.72..0.32, z 0.88..1.69 reste libre)
-    col = [("box", (1.71, L, 0.88), (-0.845, cy_, 0.44), None),
-           ("box", (0.06, -0.72 - y0, 1.3), (-0.02, (y0 - 0.72) / 2, 1.43), None),
-           ("box", (0.06, y1 - 0.32, 1.3), (-0.02, (y1 + 0.32) / 2, 1.43), None),
-           ("box", (0.06, 1.04, 0.39), (-0.02, -0.2, 1.885), None),
-           ("box", (0.1, 0.32, 0.75), (0.07, -0.88, 1.45), None),
-           ("box", (0.06, 1.1, 0.03), (0.02, 0.35, 1.72), None),
-           ("box", (0.04, L, 1.3), (xb + 0.02, cy_, 1.43), None),
-           ("box", (-xb, 0.04, 1.3), (xb / 2, y0, 1.43), None),
-           ("box", (-xb, 0.04, 1.3), (xb / 2, y1, 1.43), None),
-           ("box", (-xb, L, 0.04), (xb / 2, cy_, 2.08), None),
-           ("box", (1.1, 0.5, 0.75), (-0.85, -0.78, 1.25), None),
-           ("cyl", (0.13, 0.05), (CX, -0.545, CZ), RX90),
-           ("box", (0.5, 1.6, 0.06), (-0.95, 0.15, 1.15), (0, 1, 0, -math.pi / 4)),
-           ("box", (0.6, 1.0, 0.7), (-0.7, y1 + 0.5, 0.35), None)]
-    register(prefix, col, fr, "bati")
+    col = lathe_bati()
+    p = haas_group("static")
+    p.append(render([box((1.56, 2.59, 0.095), app("0.32 0.33 0.34", 0.85, 0.1), (-0.84, -0.045, 0.0475)),  # plinthe
+                     box((2.0, 0.74, 0.095), app("0.32 0.33 0.34", 0.85, 0.1), (-1.06, 1.20, 0.0475))]))
+    # colonne lumineuse sur le toit, au-dessus du pupitre
+    lamps = []
+    for i, (c, e) in enumerate((("0.1 0.5 0.1", "G"), ("0.6 0.4 0.05", "O"), ("0.5 0.05 0.05", "R"))):
+        lamps.append('Pose { translation 0 0 %g children [ Shape { appearance %s geometry Cylinder { radius 0.035 '
+                     'height 0.07 } } ] }' % (0.10 + 0.075 * i, app(c, 0.3, 0, emissive="0 0 0", transp=0.1,
+                                                                    def_="%s_L%s" % (prefix, e) if dynamic else None)))
+    p.append('Pose { translation -0.14 0.75 1.965 children [ %s %s ] }' % (
+        render([cyl(0.012, 0.065, DARK, (0, 0, 0.0325)), cyl(0.036, 0.01, DARK, (0, 0, 0.005))]), " ".join(lamps)))
     dyn = []
     if dynamic:
-        door = [box((0.03, 1.04, 0.16), WHITE, (0, 0, 0.08)), box((0.03, 1.04, 0.14), WHITE, (0, 0, 0.81)),
-                box((0.03, 0.16, 0.6), WHITE, (0, -0.44, 0.45)), box((0.03, 0.16, 0.6), WHITE, (0, 0.44, 0.45)),
-                box((0.012, 0.74, 0.6), PC, (0, 0, 0.45), cs=False),
-                box((0.03, 0.04, 0.4), ALU, (0.035, 0.42, 0.45)), box((0.02, 0.02, 0.06), ALU, (0.02, 0.42, 0.62)),
-                box((0.02, 0.02, 0.06), ALU, (0.02, 0.42, 0.28))]
-        dcol = [("box", (0.07, 1.04, 0.88), (0.015, 0, 0.44), None)]
-        dyn.append('DEF %s_DOOR Solid { translation 0.04 -0.2 0.84 name "porte" children [ %s ] boundingObject %s }'
-                   % (prefix, render(door), bo(dcol)))
-        register(prefix + "_DOOR", dcol, frame((0.04, 0.85, 0.84), None, fr), "door_open")
-        register(prefix + "_DOOR", dcol, frame((0.04, -0.2, 0.84), None, fr), "door_closed")
+        # porte coulissante (translation selon -y, course DOOR_TRAVEL)
+        dcol = door_col()
+        dyn.append('DEF %s_DOOR Solid { translation %s name "porte" children [ %s ] boundingObject %s }'
+                   % (prefix, f(DOOR_CLOSED), " ".join(haas_group("door")), bo(dcol)))
+        dopen = (DOOR_CLOSED[0], DOOR_CLOSED[1] - DOOR_TRAVEL, DOOR_CLOSED[2])
+        register(prefix + "_DOOR", dcol, frame(dopen, None, fr), "door_open")
+        register(prefix + "_DOOR", dcol, frame(DOOR_CLOSED, None, fr), "door_closed")
+        # mandrin 8" (corps + bague de nez) et ses 3 mors (pose CAO = serrage au rayon JAW_R0, translation radiale)
+        chuck_fr = frame((CX, CHUCK_FACE, CZ), None, fr)
         jaws = []
-        chuck_fr = frame((CX, CHUCK_Y, CZ), None, fr)
-        for i in range(3):
-            a = 2 * math.pi * i / 3
-            jcol = [("box", (0.04, 0.045, 0.03), (0, 0, 0), None)]
-            jaws.append('DEF %s_JAW%d Solid { translation %g 0.0825 %g rotation 0 1 0 %g name "mors %d" children [ %s ] '
-                        'boundingObject %s }' % (
-                            prefix, i + 1, 0.07 * math.cos(a), 0.07 * math.sin(a), -a, i + 1,
-                            render([box((0.04, 0.045, 0.03), STEEL),
-                                    box((0.004, 0.045, 0.026), app("0.3 0.3 0.32", 0.4, 0.8), (-0.02, 0, 0))]),
-                            bo(jcol)))
-        # mors (ouverts) vus par le vérificateur hors ligne comme un anneau r 0.045..0.11 devant le mandrin
-        register(prefix + "_CHUCK", [("cyl", (0.11, 0.045), (0, 0.0825, 0), RX90)], chuck_fr, "jaws")
-        chuck = [cyl_y(0.105, 0.12, STEEL, (0, 0, 0)), cyl_y(0.03, 0.122, DARK, (0, 0, 0))]
-        for i in range(3):
-            a = 2 * math.pi * i / 3 + math.pi / 3
-            chuck.append(box((0.03, 0.005, 0.012), DARK, (0.08 * math.cos(a), 0.061, 0.08 * math.sin(a))))
-        ccol = [("cyl", (0.105, 0.12), (0, 0, 0), RX90)]
+        for i, (dx, dz) in enumerate(JAW_DIRS):
+            jcol = [("box", (0.079, 0.042, 0.034), (0.0625 * dx, 0.021, 0.0625 * dz), ry_to((dx, 0, dz)))]
+            jaws.append('DEF %s_JAW%d Solid { translation 0 0 0 name "mors %d" children [ %s ] boundingObject %s }'
+                        % (prefix, i + 1, i + 1, " ".join(haas_group("jaws", "jaw_%d" % (i + 1))), bo(jcol)))
+        # mors (ouverts) vus par le vérificateur hors ligne comme un disque r 0.105 devant le corps du mandrin
+        register(prefix + "_CHUCK", [("cyl", (0.105, 0.042), (0, 0.021, 0), RX90)], chuck_fr, "jaws")
+        ccol = [("cyl", (0.105, 0.117), (0, -0.0585, 0), RX90), ("cyl", (0.127, 0.042), (0, -0.138, 0), RX90)]
         dyn.append('DEF %s_CHUCK Solid { translation %g %g %g name "mandrin" children [ %s %s ] boundingObject %s }' % (
-            prefix, CX, CHUCK_Y, CZ, render(chuck), " ".join(jaws), bo(ccol)))
+            prefix, CX, CHUCK_FACE, CZ, " ".join(haas_group("spindle")), " ".join(jaws), bo(ccol)))
         register(prefix + "_CHUCK", ccol, chuck_fr, "chuck")
-        tur = [cyl_y(0.16, 0.09, LGREY, (0, 0, 0)), cyl_y(0.06, 0.1, DARK, (0, 0, 0)),
-               box((0.3, 0.2, 0.3), ANTHRA, (-0.12, 0.06, 0.12))]
-        for i in range(8):
-            a = -math.pi / 4 + 2 * math.pi * i / 8
-            c, s_ = math.cos(a), math.sin(a)
-            tur.append(box((0.09, 0.05, 0.05), DARK, (0.2 * c, 0, 0.2 * s_), (0, 1, 0, -a)))
-            if i == 0:   # outil actif : porte-plaquette + plaquette carbure
-                tur.append(box((0.07, 0.03, 0.025), STEEL, (0.27 * c, -0.01, 0.27 * s_), (0, 1, 0, -a)))
-                tur.append(box((0.015, 0.012, 0.012), app("0.85 0.7 0.2", 0.3, 0.8), (0.31 * c, -0.02, 0.31 * s_),
-                               (0, 1, 0, -a)))
-        tur.append(cyl(0.006, 0.25, app("0.2 0.2 0.22", 0.6), (0.05, 0.05, 0.25)))           # buse arrosage
-        tur.append('DEF %s_COOLANT Transform { translation 0.16 -0.02 -0.05 rotation 0 1 0 0.85 scale 1 1 0.001 '
-                   'children [ %s ] }' % (prefix, render([cyl(0.004, 0.22, COOL, (0, 0, 0))])))
-        c45 = math.cos(-math.pi / 4)
-        tcol = [("cyl", (0.245, 0.06), (0, 0, 0), RX90), ("box", (0.3, 0.2, 0.3), (-0.12, 0.06, 0.12), None),
-                ("box", (0.12, 0.04, 0.04), (0.28 * c45, -0.01, -0.28 * c45), (0, 1, 0, math.pi / 4))]
-        dyn.append('DEF %s_TURRET Solid { translation %s name "tourelle" children [ %s ] boundingObject %s }' % (
-            prefix, f(TUR_PARK), render(tur), bo(tcol)))
-        register(prefix + "_TURRET", tcol, frame(TUR_PARK, None, fr), "turret")
-        lamps = []
-        for i, (c, e) in enumerate((("0.1 0.5 0.1", "G"), ("0.6 0.4 0.05", "O"), ("0.5 0.05 0.05", "R"))):
-            lamps.append('Pose { translation 0 0 %g children [ Shape { appearance %s geometry Cylinder { radius 0.04 '
-                         'height 0.08 } } ] }' % (0.08 + 0.085 * i, app(c, 0.3, 0, emissive="0 0 0", transp=0.1,
-                                                                         def_="%s_L%s" % (prefix, e))))
-        dyn.append('Pose { translation -0.1 -0.98 2.1 children [ %s %s ] }' % (
-            render([cyl(0.015, 0.04, DARK, (0, 0, 0.02))]), " ".join(lamps)))
+        # chariot Z (translation selon y) portant la glissière X inclinée et la tourelle BOT 12 postes
+        park_c = (TUR0[0], TUR0[1] + TUR_PARK[0], TUR0[2])
+        park_t = tuple(TUR_PARK[1] * v for v in X_DIR)
+        kcol = [slide_box(-0.64, 0.665, -0.046, 0.747, -0.06, 0.865)]
+        tcol = [("cyl", (0.241, 0.109), (0, -0.0545, 0), RX90),                          # disque de tourelle
+                slide_box(-0.21, 0.641, -0.013, 0.59, -0.18, 0.305),                     # glissière X
+                slide_box(-0.11, 0.255, 0.59, 0.731, -0.126, 0.208),
+                ("box", (0.10, 0.10, 0.06), (0.255 * U_TOOL[0], -0.078, 0.255 * U_TOOL[2]), ry_to(U_TOOL))]  # outil
+        tool = [box((0.06, 0.07, 0.06), DARK, (0.245 * U_TOOL[0], -0.07, 0.245 * U_TOOL[2]), ry_to(U_TOOL)),
+                box((0.056, 0.024, 0.02), app("0.35 0.36 0.38", 0.4, 0.8),
+                    (0.268 * U_TOOL[0], TOOL_DY + 0.018, 0.268 * U_TOOL[2]), ry_to(U_TOOL)),
+                box((0.014, 0.006, 0.014), app("0.85 0.7 0.2", 0.3, 0.8),                # plaquette carbure
+                    ((TOOL_R - 0.007) * U_TOOL[0], TOOL_DY + 0.003, (TOOL_R - 0.007) * U_TOOL[2]), ry_to(U_TOOL))]
+        # buse d'arrosage et jet (DEF _COOLANT : échelle z 0.001 = coupé, 1 = arrosage) dirigés sur la pointe d'outil
+        noz = (0.235 * U_TOOL[0] + 0.035 * N_X[0], TOOL_DY + 0.004, 0.235 * U_TOOL[2] + 0.035 * N_X[2])
+        tip = ((TOOL_R - 0.004) * U_TOOL[0], TOOL_DY + 0.004, (TOOL_R - 0.004) * U_TOOL[2])
+        jet = [tip[i] - noz[i] for i in range(3)]
+        jl = math.sqrt(sum(v * v for v in jet))
+        back = tuple(noz[i] - 0.015 * jet[i] / jl for i in range(3))
+        tool.append(cyl(0.005, 0.03, app("0.2 0.2 0.22", 0.6), back, z_to(jet)))
+        tool.append('DEF %s_COOLANT Transform { translation %s rotation %s scale 1 1 0.001 children [ %s ] }' % (
+            prefix, f(noz), f(z_to(jet)), render([cyl(0.004, jl, COOL, (0, 0, jl / 2))])))
+        turret = ('DEF %s_TURRET Solid { translation %s name "tourelle" children [ %s %s ] boundingObject %s }' % (
+            prefix, f(park_t), " ".join(haas_group("turret")), render(tool), bo(tcol)))
+        dyn.append('DEF %s_CARRIAGE Solid { translation %s name "chariot" children [ %s %s ] boundingObject %s }' % (
+            prefix, f(park_c), " ".join(haas_group("carriage")), turret, bo(kcol)))
+        cfr = frame(park_c, None, fr)
+        register(prefix + "_TURRET", kcol, cfr, "turret")
+        register(prefix + "_TURRET", tcol, frame(park_t, None, cfr), "turret")
     else:
-        p.append(box((0.03, 1.04, 0.82), WHITE, (0.04, -0.2, 1.25)))
-        p.append(box((0.012, 0.74, 0.6), PC, (0.06, -0.2, 1.29), cs=False))
+        # tours de décor : porte fermée, sans pièce mobile
+        p.append('Pose { translation %s children [ %s ] }' % (f(DOOR_CLOSED), " ".join(haas_group("door"))))
+        col += [(k, d, tuple(c[i] + DOOR_CLOSED[i] for i in range(3)), r) for k, d, c, r in door_col()]
+    register(prefix, col, fr, "bati")
     w('DEF %s Solid { translation %s rotation 0 0 1 %g name "tour %s" children [ %s %s ] boundingObject %s }' % (
-        prefix, f(pos), yaw, prefix, render(p), " ".join(dyn), bo(col)))
+        prefix, f(pos), yaw, prefix, " ".join(p), " ".join(dyn), bo(col)))
 
 
 lathe("TOUR_A", (-LATHE_X, 0, 0), 0.0)
@@ -300,17 +414,10 @@ lathe("DECO_1", (-LATHE_X - 3.8, 4.4, 0), 0.0, dynamic=False)
 lathe("DECO_2", (LATHE_X + 3.8, 4.4, 0), math.pi, dynamic=False)
 
 # =============================================================== UR10e + capteur d'effort + double pince SCHUNK
-MESH = "../protos/meshes/egk40/%s.obj"
-EGK_ROT = (0, 0, 1, -math.pi / 2)                  # EGK axes (y = approach, z = jaws) -> gripper local frame
 EGK_ALU = app("0.80 0.82 0.85", 0.5, 0.45)         # housing: natural anodized aluminium
 EGK_JAW = app("0.06 0.06 0.065", 0.45, 0.4)        # base jaws (black, from the STEP colours)
 PLATE = app("0.85 0.86 0.88", 0.3, 0.6)
 FINGER_COL = app("0.55 0.57 0.6", 0.35, 0.85)
-
-
-def mesh(name, appearance):
-    return 'Pose { rotation %s children [ Shape { appearance %s geometry Mesh { url "%s" } } ] }' % (
-        f(EGK_ROT), appearance, MESH % name)
 
 
 def finger(name, side, g):
@@ -498,7 +605,7 @@ for k in range(1, 17):
 for i in range(2):
     w('GuardBay { translation %s name "carter arriere %d" width %g height 2.0%s }' % (
         f((-LATHE_X + LATHE_X * i, -1.1, 0)), i, LATHE_X, " rightPost TRUE" if i == 1 else ""))
-w(solid("armoire UR + pupitre", (-1.25, 1.75, 0), [
+w(solid("armoire UR + pupitre", (-1.25, 2.75, 0), [            # derrière le convoyeur à copeaux du tour A
     profile((0.04, 0.04, 1.0), (0, 0, 0.5)), box((0.5, 0.3, 0.04), ALU, (0, 0, 0.02)),
     box((0.47, 0.25, 0.45), app("0.85 0.86 0.86", 0.4, 0.2), (0, 0, 0.85)),
     box((0.3, 0.05, 0.2), app("0.2 0.2 0.22", 0.5, 0.2), (0.0, -0.15, 1.2), (1, 0, 0, 0.3)),
@@ -560,7 +667,7 @@ for crate_name, cells in (("BRUTS", range(12)), ("FINIES", range(12))):
                          R=[[1, 0, 0], [0, 1, 0], [0, 0, 1]], cell=[crate_name, i]))
 with open(os.path.join(HERE, "..", "worlds", "obstacles.json"), "w") as fh:
     json.dump(dict(obstacles=OBST, tool=[dict(kind=k, dims=list(d), pos=list(p_), rot=r) for k, d, p_, r in TOOL_COL],
-                   lathe_x=LATHE_X, tur_park=TUR_PARK), fh, indent=0)
+                   lathe_x=LATHE_X, tur_park=[TUR0[0], TUR0[1] + TUR_PARK[0], TUR0[2]]), fh, indent=0)
 
 with open(OUT, "w") as fh:
     fh.write("\n".join(out) + "\n")

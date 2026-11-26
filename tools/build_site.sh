@@ -35,9 +35,9 @@ WBT
   grep -E "COLLISION|gripped|contact|failed|Crates exchanged|Traceback|Error" "$ROOT/site/.build.log" | tail -n 40 || true
 fi
 rm -f "$ROOT/site/.build.log"
-# meshes referenced by the animation (SCHUNK EGK 40, from the STEP file): url "meshes/<name>.obj"
+# meshes referenced by the animation (SCHUNK EGK 40 and Haas ST-20, from STEP files): url "meshes/<name>.obj"
 rm -rf "$ROOT/site/meshes"; mkdir -p "$ROOT/site/meshes"
-cp "$ROOT"/protos/meshes/egk40/*.obj "$ROOT/site/meshes/"
+for d in "$ROOT"/protos/meshes/*/; do cp "$d"*.obj "$ROOT/site/meshes/"; done   # egk40, haas_st20 (names must stay unique)
 python3 - "$ROOT/site/turning_cell.html" <<'PY'
 import re, sys
 p = sys.argv[1]

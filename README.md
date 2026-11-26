@@ -61,7 +61,7 @@ webots worlds/tournage.wbt
 |---|---|
 | Robot | `UR10e` (official Webots library, Universal Robots) on a steel pedestal |
 | Dual gripper | 2 × **SCHUNK EGK 40-MB-M-B** (ID 1491762): housing and base jaws from the SCHUNK STEP file ([`cad/`](cad/), converted to OBJ by [`tools/step_to_obj.py`](tools/step_to_obj.py)), jaws on motorized slide joints with the real stroke (6 mm per jaw) and gripping force (140 N). Built for this project: 6-axis F/T sensor, adapter plate, 90° bent bracket with side gussets (grippers at ±45° from the flange axis), custom fingers (gripper 1 for the Ø50 blanks, gripper 2 for the Ø30 end of the finished parts) with pads and contact sensors. Geometry in [`dual_gripper.py`](controllers/ur_tending/dual_gripper.py) |
-| CNC lathes | Built for this project (no lathe exists in the Webots library): cast bed, enclosure, automatic sliding door with window, headstock, 3-jaw chuck (moving jaws), 45° slant bed, 8-station turret with insert, coolant, CNC control panel, stack light, chip conveyor and bin |
+| CNC lathes | 2 × **Haas ST-20**, from the manufacturer's 3D model (STEP, converted by [`tools/haas_to_meshes.py`](tools/haas_to_meshes.py) into 17 OBJ meshes grouped by moving body, ≈ 211k triangles per lathe, on a 95 mm levelling plinth). Animated by the PLC: sliding door (0.72 m towards the headstock), spindle and 8" 3-jaw chuck (jaws split from the chuck body, radial stroke), Z carriage and 12-station turret on the 55° slant-bed X slide, coolant. Added for this project: window pane, tool holder and insert, stack light |
 | Crates | Built for this project: 400×600×180 plastic crates (KLT type) with ribs, handles and 12-cell dividers |
 | Parts | Ø50 × 90 mm blank → stepped shaft Ø40 / Ø30 (the clamped zone stays raw) |
 | Operator | `Pedestrian` (official library), walking animated by the PLC with the official gait tables |
@@ -95,7 +95,7 @@ Every machine, the table, the crates and their dividers, the robot (UR10e links,
 fingers) have **collision volumes** (`boundingObject`), so a contact is a real contact in the physics engine:
 
 - **In Webots**: *View > Optional Rendering > Show All Bounding Objects* draws the collision volumes, and *Show Contact
-  Points* draws every contact live. The lathe doors, chucks, jaws and turrets are separate solids, so their collision
+  Points* draws every contact live. The lathe doors, chucks, jaws, carriages and turrets are separate solids, so their collision
   volumes move with them.
 - **Collision monitor** (cell PLC): every time step it reads the robot's contact points. The only expected contact is a
   finger pad on the part being gripped. Any other contact is a collision: a red sphere is put at the contact point,
@@ -107,9 +107,9 @@ fingers) have **collision volumes** (`boundingObject`), so a contact is a real c
   replays the robot cycle with the same IK and the same job steps as the controllers, measures the clearance between
   the robot (with the carried parts) and every collision volume (exported by `tools/gen_world.py` to
   `worlds/obstacles.json`), including self-collisions of the tool against the arm. This is how the gripper orientation
-  in the lathes and the joint seeds were chosen. Current result: no collision; the smallest computed clearances are 4 mm
-  between the bracket and the crate walls (the checker models thin plates with 12 mm spheres: about 9 mm in reality)
-  and 5 mm between a carried blank and the closed door of the other lathe.
+  in the lathes and the joint seeds were chosen. Current result (Haas ST-20 lathes): no collision; the smallest computed clearances are 5 mm between
+  the bracket and the crate walls (the checker models thin plates with 12 mm spheres), 9 mm between the bracket and
+  the forearm, 21–22 mm to the lathe frame and the jaws.
 
 The UR10e base is turned so that its zero pose (arm stretched out) points to the free back side, and the start-up
 folds the arm before turning the base: nothing is swept on the way to the home position.
@@ -159,10 +159,11 @@ Kinematics:
 - **Motion optimisation** ([`tools/optimize_motion.py`](tools/optimize_motion.py)): the big joints (base, shoulder,
   elbow) should move as little as possible, the wrist doing the orientation work. For every gripper orientation the
   IK gives several arm configurations; each one is checked for collisions over its jobs, then the best combinations
-  are replayed over the whole cycle and scored by the travel of J1 + J2 + J3. Result: the same configuration family
-  (elbow below the shoulder–wrist line) at the lathes and at the crates, so the elbow no longer flips between the
-  stations; retreat point 0.25 m in front of the door. Over the 246 s cycle the travel of J1 + J2 + J3 drops from
-  316 to 240 rad (elbow: 185 → 92 rad), with no collision. Switching from one gripper to the other only takes half
+  are replayed over the whole cycle and scored by the travel of J1 + J2 + J3. With the box lathes this gave the
+  same configuration family at the lathes and at the crates (J1 + J2 + J3 travel 316 → 240 rad). The Haas ST-20 door
+  opening is narrower (0.69 m): in that family the forearm crossed the right door jamb, so the lathes are now served
+  with the other shoulder configuration, every lathe visit going in and out through the home pose (retreat point
+  0.45 m in front of the door). Switching from one gripper to the other only takes half
   a turn of wrist 3.
 
 ## Simplifications
@@ -178,3 +179,7 @@ Kinematics:
 
 SCHUNK EGK 40-MB-M-B CAD model: © SCHUNK GmbH & Co. KG, distributed by CADENAS under the CC BY-ND 4.0 licence
 (`cad/` holds the original STEP file, `protos/meshes/egk40/` the same geometry converted to OBJ, unmodified).
+
+Haas ST-20 lathe: simplified meshes derived from the manufacturer's downloadable 3D model (Haas Automation, Inc.,
+haascnc.com; the original STEP is not included). Haas and ST-20 are trademarks of Haas Automation, Inc. Independent
+student project, not affiliated with or endorsed by Haas Automation; removed on request.

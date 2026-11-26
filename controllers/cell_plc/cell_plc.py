@@ -21,8 +21,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 from dual_gripper import base_q  # noqa: E402
 
 # ---------------------------------------------------------------- geometry (see tools/gen_world.py)
-CX, CZ, CHUCK_Y, JAW_FACE = -0.40, 1.10, -0.46, -0.355
-SEAT_FRONT = -0.40                 # part front face against the chuck face (lathe frame)
+CX, CZ, JAW_FACE = -0.40, 1.10, -0.358
+SEAT_FRONT = -0.40                 # part front face against the chuck body face (lathe frame)
 PART_L, PART_R = 0.09, 0.025
 GRIP_FROM_BACK = 0.01              # TCP 10 mm inside the part's back end
 TABLE_Z = 0.70
@@ -32,13 +32,26 @@ CELL_Y = (-0.195, -0.065, 0.065, 0.195)
 PART_Z = TABLE_Z + 0.0063 + PART_L / 2
 LATHE_X = 0.80
 LATHES = {"A": (-LATHE_X, 0.0), "B": (LATHE_X, math.pi)}     # translation x, yaw
-TUR_PARK = (-0.72, 0.10, 1.42)     # turret rest position (lathe frame)
+# Haas ST-20 moving groups (lathe frame, see protos/meshes/haas_st20/haas_st20.json and tools/gen_world.py)
+DOOR_CLOSED = (-0.56, -0.582, 0.717)   # door group origin, door closed
+DOOR_TRAVEL = 0.722                    # opening stroke along -y (towards the headstock)
+JAW_DIRS = ((-0.0386, 0.9993), (-0.8459, -0.5333), (0.8888, -0.4583))   # radial directions of the jaws (x, z)
+JAW_R0 = 0.0255                        # jaw gripping radius in the CAD pose (jaw translation 0)
+TUR0 = (-0.6622, 0.3151, 1.474)        # carriage / turret origin in the CAD pose (turret axis, disc +y face)
+X_DIR = (-0.5737, 0.0, 0.8191)         # X cross slide (55° slant): +X = away from the spindle
+TUR_AXIS_R = 0.4568                    # turret axis to spindle axis distance in the CAD pose
+TOOL_R, TOOL_DY = 0.305, -0.128        # tool tip: distance from the turret axis towards the spindle, axial offset
+TUR_PARK = (0.0, 0.0)                  # rest position (carriage Z along +y, X slide) from the CAD pose
+PARK_Y = TUR0[1] + TUR_PARK[0] + TOOL_DY          # tool tip at rest: axial position (lathe y) ...
+PARK_R = TUR_AXIS_R - TOOL_R + TUR_PARK[1]        # ... and distance from the spindle axis
+CUT_Y0 = SEAT_FRONT + PART_L                      # turning pass: from the part's free end ...
+CUT_Y1 = CUT_Y0 - 0.045                           # ... to the end of the stock sleeve, 3 mm before the jaws
+CUT_R = (0.0125, 0.0185)                          # finished radii: back step (y > CUT_STEP), front step
+CUT_STEP = CUT_Y0 - 0.02                          # shoulder between the two steps
 SPIN = 9.0                         # rad/s (visual spindle speed)
-TUR_AX0 = TUR_PARK[1] + 0.29       # turret axial travel to the part's free end (tool tip y = park_y - 0.02 - s)
-TUR_RAD = 0.111                    # turret radial travel to the cutting diameter
 T_CUT = 16.0                       # s, turning pass
-SCAN_PROT = (-0.9, 0.9, 1.40, 2.0)
-SCAN_WARN = (-0.9, 0.9, 2.0, 2.8)
+SCAN_PROT = (-0.8, 0.8, 1.40, 2.0)  # x limited to the lathe facade planes (lathe A coolant tank / conveyor at x -0.85)
+SCAN_WARN = (-0.8, 0.8, 2.0, 2.8)
 OPERATOR_HOME = (3.6, 3.55)
 OPERATOR_TABLE = (0.0, 1.62)
 GAIT = [
@@ -58,18 +71,24 @@ GAIT_DZ = [-0.02, 0.04, 0.08, -0.03, -0.02, 0.04, 0.08, -0.03]
 # orientation of the bent dual gripper in the lathe: the idle gripper points along LATHE_M (lathe frame),
 # the flange and the wrist stay on the opposite side
 LATHE_M = [-0.866, 0.0, 0.5]       # idle gripper towards the back of the machine, 30° up (150°)
-OUT_DX, OUT_DZ = 0.25, 0.22        # retreat point in front of the door (lathe frame, from the façade / spindle height)
+OUT_DX, OUT_DZ = 0.45, 0.22        # retreat point in front of the door (lathe frame, from the façade / spindle height),
+                                   # far enough for the idle gripper to clear the CNC pendant (x <= 0.064)
+PRE_DY = 0.08                      # pre-insertion / extraction distance along the spindle axis (wrist 2 vs door jamb)
 CRATE_UP = 0.28                    # clearance height above the crate cells for the vertical moves
-RETREAT_HOME = True                # go back above the table before reporting "clear" (door closing)
-CRATE_M_ANGLE = 0.0                # idle gripper at the crates: sideways (±x), away from the centre line
+RETREAT_HOME = False               # go back above the table before reporting "clear" (door closing)
+CRATE_M_ANGLE = math.radians(-10)  # idle gripper at the crates: sideways (±x), away from the centre line
 
 # joint seeds per lathe / crate and gripper, given with the cell axes and converted with the orientation of the robot
-# base, chosen by tools/optimize_motion.py: same arm configuration family at the lathes and at the crates (elbow
-# below the shoulder-wrist line), so that going from one station to the other is mostly a base and wrist motion.
-# Both grippers share the flange pose: switching gripper = half a turn of wrist 3.
-SEEDS = {("A", 1): [2.872, 0.37, -1.08, -0.01, 0.57, 0.25], ("A", 2): [2.872, 0.37, -1.08, -0.01, 0.57, -2.892],
-         ("B", 1): [-0.27, 0.37, -1.08, -0.01, 0.57, 0.25], ("B", 2): [-0.27, 0.37, -1.08, -0.01, 0.57, -2.892]}
-CRATE_SEEDS = {1: [-1.191, -1.79, -1.74, -0.83, 2.29, 0.51], 2: [-1.191, -1.79, -1.74, -0.83, 2.29, -2.632]}
+# base. Haas ST-20: the door opening ends at y = 0.197 (lathe frame) on the operator side, so the arm works in the
+# lathes with the shoulder offset on the headstock side (wrist 1 on the -y side of wrist 2); with the other shoulder
+# configuration the forearm crosses the façade behind the right door jamb. Crate angle chosen so that wrist 3 is near
+# 0 / π when wrist 2 goes through π on the moves between crates and lathes (bracket clear of the forearm).
+# Checked with tools/check_collisions.py. Both grippers share the flange pose: switching gripper = half a turn of wrist 3.
+SEEDS = {("A", 1): [0.068, -2.503, -1.003, -2.285, -2.297, -0.045],
+         ("A", 2): [0.068, -2.503, -1.003, -2.285, -2.297, 3.097],
+         ("B", 1): [-3.074, -2.503, -1.003, -2.285, -2.297, -0.045],
+         ("B", 2): [-3.074, -2.503, -1.003, -2.285, -2.297, 3.097]}
+CRATE_SEEDS = {1: [-1.2, -1.806, -1.681, -1.033, 2.337, 0.274], 2: [-1.2, -1.806, -1.681, -1.033, 2.337, -2.868]}
 SEEDS = {k: base_q(v) for k, v in SEEDS.items()}
 CRATE_SEEDS = {k: base_q(v) for k, v in CRATE_SEEDS.items()}
 
@@ -125,6 +144,7 @@ class Lathe:
         self.door = g(p + "_DOOR")
         self.chuck = g(p + "_CHUCK")
         self.jaws = [g("%s_JAW%d" % (p, i)) for i in (1, 2, 3)]
+        self.carriage = g(p + "_CARRIAGE")
         self.turret = g(p + "_TURRET")
         self.coolant = g(p + "_COOLANT")
         self.lamps = {c: g("%s_L%s" % (p, c)) for c in "GOR"}
@@ -152,18 +172,23 @@ class Lathe:
 
     # -- actuators
     def set_door(self, s):
-        self.door.getField("translation").setSFVec3f([0.04, -0.2 + 1.05 * s, 0.84])
+        """s = 0 closed, 1 open: the door slides along -y (towards the headstock)."""
+        self.door.getField("translation").setSFVec3f([DOOR_CLOSED[0], DOOR_CLOSED[1] - DOOR_TRAVEL * s,
+                                                      DOOR_CLOSED[2]])
 
     def set_jaws(self, r):
-        for i, j in enumerate(self.jaws):
-            a = 2 * math.pi * i / 3
-            j.getField("translation").setSFVec3f([(r + 0.02) * math.cos(a), 0.0825, (r + 0.02) * math.sin(a)])
+        """Jaw inner radius r: each jaw slides along its radial direction from the CAD pose (radius JAW_R0)."""
+        for j, (dx, dz) in zip(self.jaws, JAW_DIRS):
+            j.getField("translation").setSFVec3f([dx * (r - JAW_R0), 0.0, dz * (r - JAW_R0)])
 
-    def set_turret(self, s_axial, s_radial):
-        # parked at TUR_PARK, tool tip 0.133 m from the spindle axis; the cross slide moves the tip
-        # along the part (lathe -y) and towards the axis (45° slant bed)
-        self.turret.getField("translation").setSFVec3f(
-            [TUR_PARK[0] + 0.707 * s_radial, TUR_PARK[1] - s_axial, TUR_PARK[2] - 0.707 * s_radial])
+    def set_turret(self, y_tip, r_tip):
+        """Tool tip at axial position y_tip (lathe y) and at r_tip from the spindle axis: the carriage moves along y
+        (machine Z), the turret along the 55° cross slide (machine X), the turret axis staying on the X line through
+        the spindle axis."""
+        z = y_tip - TUR0[1] - TOOL_DY
+        x = r_tip - (TUR_AXIS_R - TOOL_R)
+        self.carriage.getField("translation").setSFVec3f([TUR0[0], TUR0[1] + z, TUR0[2]])
+        self.turret.getField("translation").setSFVec3f([x * X_DIR[0], 0.0, x * X_DIR[2]])
 
     def lamp(self, c, on):
         col = {"G": [0, 1, 0], "O": [1, 0.55, 0], "R": [1, 0, 0]}[c]
@@ -193,10 +218,10 @@ class Lathe:
         return self.world([CX, SEAT_FRONT + PART_L - GRIP_FROM_BACK, CZ])
 
     def tcp_pre(self):
-        return self.world([CX, SEAT_FRONT + PART_L - GRIP_FROM_BACK + 0.10, CZ])
+        return self.world([CX, SEAT_FRONT + PART_L - GRIP_FROM_BACK + PRE_DY, CZ])
 
     def tcp_out(self):
-        return self.world([OUT_DX, SEAT_FRONT + PART_L - GRIP_FROM_BACK + 0.10, CZ + OUT_DZ])
+        return self.world([OUT_DX, SEAT_FRONT + PART_L - GRIP_FROM_BACK + PRE_DY, CZ + OUT_DZ])
 
     # -- cycle
     def start_cycle(self):
@@ -223,13 +248,17 @@ class Lathe:
         elif st == "cutting":
             t = self.t
             self.spin = min(SPIN, SPIN * t / 1.0) if t < T_CUT + 3.5 else max(0.0, SPIN * (T_CUT + 4.5 - t))
-            # turret: approach 1.5 s, roughing pass T_CUT, retract 1.5 s
+            # turret: approach 1.5 s (tool tip to the outer diameter at the part's free end), turning pass T_CUT
+            # towards the jaws along the stepped profile, retract 1.5 s back to the rest position
+            r0 = PART_R + 0.002
             if t < 1.5:
                 s = t / 1.5
-                self.set_turret(TUR_AX0 * s, TUR_RAD * s)
+                self.set_turret(PARK_Y + (CUT_Y0 - PARK_Y) * s, PARK_R + (r0 - PARK_R) * s)
             elif t < 1.5 + T_CUT:
                 self.cut = (t - 1.5) / T_CUT
-                self.set_turret(TUR_AX0 + 0.045 * self.cut, TUR_RAD + 0.003 * math.sin(self.cut * 3 * math.pi) ** 2)
+                y = CUT_Y0 + (CUT_Y1 - CUT_Y0) * self.cut
+                rc = CUT_R[0] + (CUT_R[1] - CUT_R[0]) * max(0.0, min(1.0, (CUT_STEP - y) / 0.002))   # shoulder
+                self.set_turret(y, r0 + (rc - r0) * min(1.0, self.cut / 0.03))
                 self.coolant.getField("scale").setSFVec3f([1, 1, 1])
                 n = self.plc.getFromDef(self.part)
                 sl = n and self.plc.getFromDef(self.part.replace("PART", "SLV"))
@@ -242,8 +271,8 @@ class Lathe:
                     self.finished = True
                     self.plc.getFromDef(self.part.replace("PART", "PBO")).getField("radius").setSFFloat(0.015)
                 self.coolant.getField("scale").setSFVec3f([1, 1, 0.001])
-                s = 1.0 - (t - 1.5 - T_CUT) / 1.5
-                self.set_turret((TUR_AX0 + 0.045) * s, TUR_RAD * s)
+                s = (t - 1.5 - T_CUT) / 1.5
+                self.set_turret(CUT_Y1 + (PARK_Y - CUT_Y1) * s, CUT_R[1] + (PARK_R - CUT_R[1]) * s)
             elif t >= T_CUT + 4.5:
                 self.spin = 0.0
                 self.state, self.t = "opening", 0.0
@@ -358,20 +387,26 @@ class CellPLC(Supervisor):
         m = lt.wdir(LATHE_M)
         x1, x2 = tool_x(1, a, m), tool_x(2, a, m)
         out, pre, seat = lt.tcp_out(), lt.tcp_pre(), lt.tcp_seat()
-        s = []
+        s = [dict(t="home")]                # same way in from every crate cell (above the table, crate seed pose)
         if unload:
-            s += [dict(t="open", g=2), dict(t="joint", g=2, p=out, a=a, x=x2, seed=SEEDS[(L, 2)]),
+            # reach the retreat point with the gripper-1 wrist orientation, then half a turn of wrist 3 in place:
+            # the direct joint move with gripper 2 swings the bracket across the forearm
+            s += [dict(t="open", g=2), dict(t="joint", g=1, p=out, a=a, x=x1, seed=SEEDS[(L, 1)]),
+                  dict(t="joint", g=2, p=out, a=a, x=x2, seed=SEEDS[(L, 2)]),
                   dict(t="lin", g=2, p=pre, a=a, x=x2, v=0.4),
                   dict(t="lin", g=2, p=seat, a=a, x=x2, v=0.12), dict(t="grip", g=2, part=lt.part),
                   dict(t="req", what="chuck_open", lathe=L),
                   dict(t="lin", g=2, p=pre, a=a, x=x2, v=0.2), dict(t="lin", g=2, p=out, a=a, x=x2, v=0.4)]
         s += [dict(t="joint", g=1, p=out, a=a, x=x1, seed=SEEDS[(L, 1)]), dict(t="lin", g=1, p=pre, a=a, x=x1, v=0.4),
-              dict(t="force", g=1, dir=a, contact=0.10, max=0.115, F=40, v=0.05),
+              dict(t="force", g=1, dir=a, contact=PRE_DY, max=PRE_DY + 0.015, F=40, v=0.05),
               dict(t="req", what="chuck_clamp", lathe=L), dict(t="open", g=1),
-              dict(t="lin", g=1, p=pre, a=a, x=x1, v=0.2), dict(t="lin", g=1, p=out, a=a, x=x1, v=0.4),
-              dict(t="evt", name="clear", lathe=L)]
+              dict(t="lin", g=1, p=pre, a=a, x=x1, v=0.2), dict(t="lin", g=1, p=out, a=a, x=x1, v=0.4)]
+        # always leave through the home pose too (the idle gripper passes next to the CNC pendant): the way out does
+        # not depend on the next crate cell
         if RETREAT_HOME:                    # door closes only once the arm is back above the table
-            s.insert(-1, dict(t="home"))
+            s += [dict(t="home"), dict(t="evt", name="clear", lathe=L)]
+        else:
+            s += [dict(t="evt", name="clear", lathe=L), dict(t="home")]
         return s
 
     def send_job(self, steps, what):

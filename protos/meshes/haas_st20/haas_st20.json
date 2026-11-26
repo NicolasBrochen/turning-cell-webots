@@ -1,0 +1,748 @@
+{
+ "double_sided_triangles": 27510,
+ "dropped_by_rule": [
+  "5 Inch Chuck (ST20 Sub Spindle)(RETRACT)",
+  "BMT65 Turret",
+  "Enclosure(Default) / Level bolt1",
+  "Main Spindle / Adapter1",
+  "Main Spindle / Drawtube1",
+  "Main Spindle / Hyd Cyl / 10000111161",
+  "Main Spindle / Hyd Cyl / 10000111173",
+  "Main Spindle / Main Spindle Casting",
+  "Main Spindle / Spindle1",
+  "Main Spindle / Tube1",
+  "Main Spindle / ring1",
+  "ST-20 Sub Spindle",
+  "ST-20Y CHUCK 10inch",
+  "VDI Turret ST20-25r2",
+  "X Axis - Turret(37-3842) / 10000081563 / 10000081561",
+  "X Axis - Turret(37-3842) / 50-0044_02",
+  "Z Axis Assembly / 50-9011_02"
+ ],
+ "dropped_small_count": 5,
+ "files": {
+  "st20_carriage_black.obj": {
+   "bbox_group_frame": [
+    [
+     -0.5367,
+     0.0492,
+     -0.2805
+    ],
+    [
+     -0.4927,
+     0.6703,
+     -0.1424
+    ]
+   ],
+   "bytes": 238091,
+   "colour": [
+    0.05,
+    0.05,
+    0.05
+   ],
+   "group": "carriage",
+   "material": "black",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 2864,
+   "vertices": 3008
+  },
+  "st20_carriage_grey.obj": {
+   "bbox_group_frame": [
+    [
+     -0.6005,
+     -0.0462,
+     -0.779
+    ],
+    [
+     0.0043,
+     0.7473,
+     0.5354
+    ]
+   ],
+   "bytes": 567280,
+   "colour": [
+    0.5,
+    0.52,
+    0.54
+   ],
+   "group": "carriage",
+   "material": "grey",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 6880,
+   "vertices": 7836
+  },
+  "st20_carriage_steel.obj": {
+   "bbox_group_frame": [
+    [
+     -0.4771,
+     0.1384,
+     -0.5438
+    ],
+    [
+     0.0312,
+     0.4995,
+     0.163
+    ]
+   ],
+   "bytes": 807045,
+   "colour": [
+    0.7,
+    0.71,
+    0.73
+   ],
+   "group": "carriage",
+   "material": "steel",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 9452,
+   "vertices": 10080
+  },
+  "st20_door_frame.obj": {
+   "bbox_group_frame": [
+    [
+     -0.0002,
+     0.0003,
+     0.0004
+    ],
+    [
+     0.4692,
+     0.8093,
+     1.2579
+    ]
+   ],
+   "bytes": 69855,
+   "colour": [
+    0.22,
+    0.23,
+    0.24
+   ],
+   "group": "door",
+   "material": "dark",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 908,
+   "vertices": 1112
+  },
+  "st20_door_handle.obj": {
+   "bbox_group_frame": [
+    [
+     0.4569,
+     0.6956,
+     0.3425
+    ],
+    [
+     0.5363,
+     0.7274,
+     0.6743
+    ]
+   ],
+   "bytes": 120787,
+   "colour": [
+    0.5,
+    0.52,
+    0.54
+   ],
+   "group": "door",
+   "material": "grey",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 1928,
+   "vertices": 1368
+  },
+  "st20_door_window.obj": {
+   "bbox_group_frame": [
+    [
+     0.4507,
+     0.2977,
+     0.5458
+    ],
+    [
+     0.4507,
+     0.5626,
+     0.9187
+    ]
+   ],
+   "bytes": 428,
+   "colour": [
+    0.72,
+    0.82,
+    0.86
+   ],
+   "group": "door",
+   "material": "window",
+   "part": "",
+   "transparency": 0.6,
+   "triangles": 4,
+   "vertices": 8
+  },
+  "st20_jaw_1.obj": {
+   "bbox_group_frame": [
+    [
+     -0.0209,
+     0.0,
+     0.0225
+    ],
+    [
+     0.0159,
+     0.042,
+     0.1025
+    ]
+   ],
+   "bytes": 6051,
+   "colour": [
+    0.7,
+    0.71,
+    0.73
+   ],
+   "group": "jaws",
+   "material": "steel",
+   "part": "jaw_1",
+   "transparency": 0.0,
+   "triangles": 84,
+   "vertices": 108
+  },
+  "st20_jaw_2.obj": {
+   "bbox_group_frame": [
+    [
+     -0.095,
+     0.0,
+     -0.0685
+    ],
+    [
+     -0.0135,
+     0.042,
+     -0.0009
+    ]
+   ],
+   "bytes": 6235,
+   "colour": [
+    0.7,
+    0.71,
+    0.73
+   ],
+   "group": "jaws",
+   "material": "steel",
+   "part": "jaw_2",
+   "transparency": 0.0,
+   "triangles": 84,
+   "vertices": 108
+  },
+  "st20_jaw_3.obj": {
+   "bbox_group_frame": [
+    [
+     0.0152,
+     0.0,
+     -0.0623
+    ],
+    [
+     0.0979,
+     0.042,
+     0.0016
+    ]
+   ],
+   "bytes": 6461,
+   "colour": [
+    0.7,
+    0.71,
+    0.73
+   ],
+   "group": "jaws",
+   "material": "steel",
+   "part": "jaw_3",
+   "transparency": 0.0,
+   "triangles": 88,
+   "vertices": 114
+  },
+  "st20_spindle.obj": {
+   "bbox_group_frame": [
+    [
+     -0.127,
+     -0.1591,
+     -0.127
+    ],
+    [
+     0.127,
+     0.0,
+     0.127
+    ]
+   ],
+   "bytes": 375115,
+   "colour": [
+    0.7,
+    0.71,
+    0.73
+   ],
+   "group": "spindle",
+   "material": "steel",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 5080,
+   "vertices": 4678
+  },
+  "st20_static_black.obj": {
+   "bbox_group_frame": [
+    [
+     -1.4632,
+     -1.4361,
+     0.0948
+    ],
+    [
+     0.035,
+     1.2073,
+     2.0888
+    ]
+   ],
+   "bytes": 666900,
+   "colour": [
+    0.05,
+    0.05,
+    0.05
+   ],
+   "group": "static",
+   "material": "black",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 8142,
+   "vertices": 8757
+  },
+  "st20_static_dark.obj": {
+   "bbox_group_frame": [
+    [
+     -2.1869,
+     -1.3227,
+     0.0872
+    ],
+    [
+     -0.0559,
+     1.5529,
+     0.7903
+    ]
+   ],
+   "bytes": 2133658,
+   "colour": [
+    0.22,
+    0.23,
+    0.24
+   ],
+   "group": "static",
+   "material": "dark",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 25766,
+   "vertices": 26966
+  },
+  "st20_static_grey.obj": {
+   "bbox_group_frame": [
+    [
+     -1.5937,
+     -1.3124,
+     0.1856
+    ],
+    [
+     -0.0516,
+     2.3654,
+     2.0245
+    ]
+   ],
+   "bytes": 5638755,
+   "colour": [
+    0.5,
+    0.52,
+    0.54
+   ],
+   "group": "static",
+   "material": "grey",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 66508,
+   "vertices": 69735
+  },
+  "st20_static_steel.obj": {
+   "bbox_group_frame": [
+    [
+     -1.1591,
+     -0.5571,
+     0.6371
+    ],
+    [
+     0.064,
+     1.0579,
+     1.7606
+    ]
+   ],
+   "bytes": 945107,
+   "colour": [
+    0.7,
+    0.71,
+    0.73
+   ],
+   "group": "static",
+   "material": "steel",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 11272,
+   "vertices": 12007
+  },
+  "st20_static_white.obj": {
+   "bbox_group_frame": [
+    [
+     -1.5932,
+     -1.6331,
+     0.23
+    ],
+    [
+     0.0331,
+     1.6632,
+     2.0926
+    ]
+   ],
+   "bytes": 1776453,
+   "colour": [
+    0.88,
+    0.89,
+    0.89
+   ],
+   "group": "static",
+   "material": "white",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 21050,
+   "vertices": 23290
+  },
+  "st20_turret_disc_steel.obj": {
+   "bbox_group_frame": [
+    [
+     -0.2371,
+     -0.109,
+     -0.2371
+    ],
+    [
+     0.2371,
+     0.0,
+     0.2371
+    ]
+   ],
+   "bytes": 2924037,
+   "colour": [
+    0.7,
+    0.71,
+    0.73
+   ],
+   "group": "turret",
+   "material": "steel",
+   "part": "disc",
+   "transparency": 0.0,
+   "triangles": 33254,
+   "vertices": 34994
+  },
+  "st20_turret_slide_grey.obj": {
+   "bbox_group_frame": [
+    [
+     -0.4866,
+     -0.0127,
+     -0.3432
+    ],
+    [
+     0.1613,
+     0.7309,
+     0.4733
+    ]
+   ],
+   "bytes": 1579503,
+   "colour": [
+    0.5,
+    0.52,
+    0.54
+   ],
+   "group": "turret",
+   "material": "grey",
+   "part": "slide",
+   "transparency": 0.0,
+   "triangles": 17522,
+   "vertices": 19883
+  }
+ },
+ "frame": "lathe local frame of tools/gen_world.py: x_l = z_h - 0.40, y_l = x_h - 0.5567, z_l = y_h + 1.10 (STEP metres); facade x_l = 0, interior -x_l, spindle along +y_l, z up",
+ "groups": {
+  "carriage": {
+   "axis": [
+    0,
+    1,
+    0
+   ],
+   "joint": "prismatic",
+   "note": "Z saddle with its X rails/trucks/top covers; telescopic Z covers are static",
+   "origin": [
+    -0.6622,
+    0.3151,
+    1.474
+   ],
+   "origin_def": "same point as the turret origin in the CAD pose (so the turret can be a child of the carriage with zero offset)"
+  },
+  "door": {
+   "axis": [
+    0,
+    -1,
+    0
+   ],
+   "closed_bbox": [
+    [
+     -0.5602,
+     -0.5817,
+     0.7174
+    ],
+    [
+     -0.0238,
+     0.2273,
+     1.9749
+    ]
+   ],
+   "joint": "prismatic",
+   "note": "opens towards the headstock (-y_l) along the Door Track; at full travel the door's +y edge stands at y_l = -0.495",
+   "origin": [
+    -0.56,
+    -0.582,
+    0.717
+   ],
+   "origin_def": "bbox min corner of the closed door (lathe frame)",
+   "range": [
+    0.0,
+    0.722
+   ],
+   "travel_open": 0.722
+  },
+  "jaws": {
+   "jaws": [
+    {
+     "angle_deg": 92.21,
+     "grip_radius": 0.0255,
+     "name": "jaw_1",
+     "outer_radius": 0.1033,
+     "radial_dir_xz": [
+      -0.0386,
+      0.9993
+     ]
+    },
+    {
+     "angle_deg": 212.23,
+     "grip_radius": 0.0255,
+     "name": "jaw_2",
+     "outer_radius": 0.1033,
+     "radial_dir_xz": [
+      -0.8459,
+      -0.5333
+     ]
+    },
+    {
+     "angle_deg": 332.72,
+     "grip_radius": 0.0255,
+     "name": "jaw_3",
+     "outer_radius": 0.1033,
+     "radial_dir_xz": [
+      0.8888,
+      -0.4583
+     ]
+    }
+   ],
+   "joint": "prismatic, radial, one per jaw",
+   "note": "jaws = part of the single-solid 8in chuck in front of the body face, split by a boolean cut; the master-jaw part inside the body slots stays in spindle.obj",
+   "origin": [
+    -0.4,
+    -0.4,
+    1.1
+   ],
+   "origin_def": "same as spindle (child of the spindle)"
+  },
+  "spindle": {
+   "axis": [
+    0,
+    1,
+    0
+   ],
+   "joint": "revolute",
+   "origin": [
+    -0.4,
+    -0.4,
+    1.1
+   ],
+   "origin_def": "spindle axis at the 8in chuck body front face"
+  },
+  "static": {
+   "joint": "fixed",
+   "origin": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "turret": {
+   "indexing_axis": [
+    0,
+    1,
+    0
+   ],
+   "joint": "X slide (prismatic) + indexing (revolute)",
+   "note": "+X slide = away from the spindle (up and back); the turret axis lies on the X line through the spindle axis. turret_disc_* files = indexing disc, turret_slide_* = cross slide (same frame; split them if the disc must index on its own)",
+   "origin": [
+    -0.6622,
+    0.3151,
+    1.474
+   ],
+   "origin_def": "turret indexing axis at the turret front face (x_h max of the BOT turret, towards the tailstock)",
+   "slant_deg_from_horizontal": 54.99,
+   "station_pitch_deg": 30.0,
+   "stations": 12,
+   "turret_axis_distance_from_spindle_axis": 0.4568,
+   "x_slide_axis": [
+    -0.5737,
+    0.0,
+    0.8191
+   ]
+  }
+ },
+ "key_positions": {
+  "chuck_back_y": -0.517,
+  "chuck_bbox": [
+   [
+    -0.505,
+    -0.517,
+    0.995
+   ],
+   [
+    -0.295,
+    -0.358,
+    1.205
+   ]
+  ],
+  "chuck_body_front_y": -0.4,
+  "chuck_jaw_front_y": -0.358,
+  "chuck_radius": 0.105,
+  "door_closed_bbox": [
+   [
+    -0.5602,
+    -0.5817,
+    0.7174
+   ],
+   [
+    -0.0238,
+    0.2273,
+    1.9749
+   ]
+  ],
+  "door_open_bbox": [
+   [
+    -0.5602,
+    -1.3037,
+    0.7174
+   ],
+   [
+    -0.0238,
+    -0.4947,
+    1.9749
+   ]
+  ],
+  "door_opening": {
+   "note": "front opening between the headstock-side front sheet and the right front panel, bottom = top of the front/door trays, top = top of the closed door; the door also wraps over the roof, so the opening continues on the roof back to x_l = -0.560",
+   "plane_x": -0.1073,
+   "y": [
+    -0.5535,
+    0.197
+   ],
+   "z": [
+    0.7903,
+    1.9749
+   ]
+  },
+  "door_opening_clear_y_when_open": [
+   -0.4947,
+   0.197
+  ],
+  "door_track": [
+   [
+    -0.1101,
+    -1.3042,
+    0.745
+   ],
+   [
+    -0.1014,
+    0.1944,
+    0.7672
+   ]
+  ],
+  "envelope": [
+   [
+    -2.1869,
+    -1.6331,
+    0.0872
+   ],
+   [
+    0.064,
+    2.3654,
+    2.0926
+   ]
+  ],
+  "floor_z": 0.095,
+  "lowest_point_z": 0.0872,
+  "pendant_bbox": [
+   [
+    -0.0536,
+    0.2918,
+    1.2335
+   ],
+   [
+    0.064,
+    0.7701,
+    1.7606
+   ]
+  ],
+  "spindle_axis_xz": [
+   -0.4,
+   1.1
+  ],
+  "turret_axis_xz": [
+   -0.6622,
+   1.474
+  ],
+  "turret_bbox": [
+   [
+    -0.9065,
+    0.2061,
+    1.2298
+   ],
+   [
+    -0.418,
+    0.3151,
+    1.7182
+   ]
+  ],
+  "turret_disc_y": [
+   0.2061,
+   0.3151
+  ],
+  "window_pane": [
+   [
+    -0.1093,
+    -0.2843,
+    1.2628
+   ],
+   [
+    -0.1093,
+    -0.0194,
+    1.6357
+   ]
+  ]
+ },
+ "source": "ST20-25_Reboot_2-axis_STEP_2019-05.STEP",
+ "tessellation": {
+  "default_angle_rad": 0.5,
+  "default_deflection_mm": 2.0,
+  "min_diag_mm": 15.0,
+  "min_face_area_mm2": {
+   "^BOT Turret": 20.0
+  }
+ },
+ "total_triangles": 210886,
+ "units": "metres; each file's vertices are in its group frame = lathe frame translated to the group origin"
+}

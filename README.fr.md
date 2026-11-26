@@ -20,7 +20,7 @@ et de distance).
 ## Visualiser sans Webots
 
 - **Animation 3D interactive** : [nicolasbrochen.github.io/turning-cell-webots](https://nicolasbrochen.github.io/turning-cell-webots/).
-  C'est un export HTML5 de Webots de 4 min 06 s de production (les deux tours, les échanges de pinces, l'échange des
+  C'est un export HTML5 de Webots de 3 min 59 s de production (les deux tours, les échanges de pinces, l'échange des
   caisses) : on peut tourner autour, zoomer et avancer dans le temps. Fichiers dans [`site/`](site/), publiés depuis la
   branche `gh-pages` (`git subtree push --prefix site origin gh-pages`).
 - **Vidéos** : [`docs/`](docs/).
@@ -116,8 +116,8 @@ pinces, doigts) ont des **volumes de collision** (`boundingObject`) : un contact
   parois de caisse (le vérificateur modélise les tôles minces par des sphères de 12 mm), 9 mm entre le support et
   l'avant-bras, 21 à 22 mm avec le bâti du tour et les mors.
 
-La base du UR10e est orientée pour que sa position zéro (bras tendu) pointe vers l'arrière libre, et la mise en route
-replie le bras avant de tourner la base : rien n'est balayé sur le chemin de la position de repos.
+Le robot démarre directement en position de retrait au-dessus des caisses (pinces vers les caisses) : le contrôleur
+place les articulations par l'API superviseur avant le premier pas, la pose zéro bras tendu n'apparaît jamais.
 
 ## Clavier (cliquer d'abord dans la vue 3D)
 

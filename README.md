@@ -19,7 +19,7 @@ collaborative front side is guarded by two laser scanners (speed and separation 
 ## Viewing without Webots
 
 - **Interactive 3D animation**: [nicolasbrochen.github.io/turning-cell-webots](https://nicolasbrochen.github.io/turning-cell-webots/).
-  It is a Webots HTML5 export of 4 min 06 s of production (both lathes, dual-gripper swaps, crate exchange): orbit,
+  It is a Webots HTML5 export of 3 min 59 s of production (both lathes, dual-gripper swaps, crate exchange): orbit,
   zoom and scrub the timeline. Files in [`site/`](site/), published from the `gh-pages` branch
   (`git subtree push --prefix site origin gh-pages`).
 - **Videos**: [`docs/`](docs/).
@@ -111,8 +111,8 @@ fingers) have **collision volumes** (`boundingObject`), so a contact is a real c
   the bracket and the crate walls (the checker models thin plates with 12 mm spheres), 9 mm between the bracket and
   the forearm, 21–22 mm to the lathe frame and the jaws.
 
-The UR10e base is turned so that its zero pose (arm stretched out) points to the free back side, and the start-up
-folds the arm before turning the base: nothing is swept on the way to the home position.
+The robot starts directly in its retreat pose above the crates (grippers towards the crates): the controller places
+the joints there through the supervisor API before the first step, so the stretched-out zero pose never appears.
 
 ## Keyboard (click in the 3D view first)
 

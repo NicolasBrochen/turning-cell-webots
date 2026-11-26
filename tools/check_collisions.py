@@ -332,8 +332,8 @@ def run(verbose=False, quiet=False):
     held = {1: False, 2: False}
     worst = {}
     n_coll = 0
-    rb.q_cmd = [0.0] * 6                       # start-up from the zero pose (see ur_tending.run)
-    for qh in UR.start_path(0.0):
+    rb.q_cmd = list(UR.Q_HOME)                 # start-up: the arm is placed at Q_HOME (see ur_tending.place_at_home)
+    for qh in UR.start_path():
         for q in samples(rb, dict(t="home", _q=qh)):
             for d, a, b in check(q, held, "start-up", set(), ""):
                 key = ("start-up", 0, "home", a, b)

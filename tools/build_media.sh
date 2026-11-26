@@ -27,14 +27,14 @@ WBT
 }
 cat > "$tmpd/a.json" <<JSON
 {"width": 1280, "height": 720, "clips": [
-  {"file": "$T/cycle.mp4", "start": 0, "end": 244, "accel": 4, "position": [1.1, 3.9, 3.4], "look_at": [-0.1, -0.1, 0.9]}
+  {"file": "$T/cycle.mp4", "start": 0, "end": 237, "accel": 4, "position": [1.1, 3.9, 3.4], "look_at": [-0.1, -0.1, 0.9]}
 ]}
 JSON
 cat > "$tmpd/b.json" <<JSON
 {"width": 1280, "height": 720, "clips": [
-  {"file": "$T/zoom.mp4", "start": 48.0, "end": 53.5, "accel": 1, "position": [-0.85, 1.6, 1.6], "look_at": [-0.22, 0.85, 1.12]},
-  {"file": "$T/prise.mp4", "start": 54.0, "end": 86.0, "accel": 1, "position": [-0.15, 0.75, 1.75], "look_at": [-1.15, -0.3, 1.1]},
-  {"file": "$T/bande.mp4", "start": 226.0, "end": 242.0, "accel": 1, "position": [2.3, 3.4, 2.2], "look_at": [0.0, 1.1, 0.8]}
+  {"file": "$T/zoom.mp4", "start": 40.6, "end": 46.1, "accel": 1, "position": [-0.85, 1.6, 1.6], "look_at": [-0.22, 0.85, 1.12]},
+  {"file": "$T/prise.mp4", "start": 46.6, "end": 78.6, "accel": 1, "position": [-0.15, 0.75, 1.75], "look_at": [-1.15, -0.3, 1.1]},
+  {"file": "$T/bande.mp4", "start": 218.6, "end": 234.6, "accel": 1, "position": [2.3, 3.4, 2.2], "look_at": [0.0, 1.1, 0.8]}
 ]}
 JSON
 run "$tmpd/a.json"

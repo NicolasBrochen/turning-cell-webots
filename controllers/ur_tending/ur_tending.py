@@ -28,11 +28,12 @@ from ur10e_kin import fk, ik, pose, wrap_near
 JOINTS = ["shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint", "wrist_1_joint", "wrist_2_joint", "wrist_3_joint"]
 TCP = {1: tcp_matrix(1), 2: tcp_matrix(2)}      # bent dual gripper (dual_gripper.py)
 Q_HOME = base_q([-1.2, -1.806, -1.681, -1.033, 2.337, 0.274])  # above the crate table (same as the crate seed of gripper 1)
-Q_FOLD = [-1.57, 2.0, 0.4, -1.57, -1.571]                 # compact pose (joints 2..6) for the start-up rotation
+# The arm starts directly in Q_HOME (retreat pose, grippers above the crates): the joints are placed there by the
+# supervisor API before the first step, so the stretched-out zero pose never appears.
 
 
-def start_path(pan0):
-    return [[pan0] + Q_FOLD, [Q_HOME[0]] + Q_FOLD, list(Q_HOME)]
+def start_path(pan0=None):
+    return [list(Q_HOME)]
 
 
 V_JOINT = 1.4           # rad/s (average, quintic profile)
@@ -363,14 +364,21 @@ class Tending(Supervisor):
                 self.steps = list(m["steps"])
                 self.cur = None
 
+    def place_at_home(self):
+        """Puts every arm joint at Q_HOME before the first physics step (supervisor API on the HingeJoint holding
+        each motor), so the robot appears in its retreat pose from t = 0."""
+        for m, q in zip(self.motors, Q_HOME):
+            self.getFromDevice(m._tag).getParentNode().setJointPosition(q)   # getFromDevice takes the device tag
+            m.setPosition(q)
+
     def run(self):
+        self.place_at_home()
         self.step(self.dt_ms)
         self.q_cmd = [s.getValue() for s in self.sensors]
         self.steps = [{"t": "_home"}]
         ready = False
-        # start-up: fold the arm first (base joint kept still), turn the base folded, then go to Q_HOME: the
-        # stretched-out zero pose must not sweep through a lathe
-        home_path = start_path(self.q_cmd[0])
+        # start-up: already at Q_HOME (place_at_home); a short settle move absorbs any residual offset
+        home_path = start_path()
         home_t, home_q0 = 0.0, list(self.q_cmd)
         T_home = max(1.0, max(abs(a - b) for a, b in zip(home_q0, home_path[0])) / 0.8)
         self.set_fingers(1, 0.0)

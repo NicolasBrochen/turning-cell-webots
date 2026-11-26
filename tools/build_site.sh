@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Builds site/: Webots HTML5 animation of the turning cell (interactive 3D, plays in any browser).
-#   tools/build_site.sh            (START=0 END=246 simulated seconds by default: 2 lathes, dual-gripper swaps, crate exchange)
+#   tools/build_site.sh            (START=0 END=239 simulated seconds by default: 2 lathes, dual-gripper swaps, crate exchange)
 #   NO_RECORD=1 tools/build_site.sh  -> only redo the page layout (description, index, thumbnail)
 # Publish on GitHub Pages:  git subtree push --prefix site origin gh-pages
 set -eu
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 . "$ROOT/tools/webots_env.sh"     # Webots for Windows when available (WEBOTS_MODE=linux forces Linux)
 START=${START:-0}
-END=${END:-246}
+END=${END:-239}
 STEP=${STEP:-16}                  # time step of the recording (ms): 16 ms keeps the animation file small
 if [ -z "${NO_RECORD:-}" ]; then
   prepare_run_root

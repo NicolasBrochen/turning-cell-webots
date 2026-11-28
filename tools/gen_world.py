@@ -49,8 +49,13 @@ JAW_R0 = 0.0255                      # rayon de serrage des mors dans la pose CA
 TUR0 = (-0.6622, 0.3151, 1.474)      # chariot / tourelle en pose CAO : axe de tourelle, face +y du disque
 X_DIR = (-0.5737, 0.0, 0.8191)       # glissière X (55°) : +X = s'éloigne de la broche
 TUR_AXIS_R = 0.4568                  # distance axe de tourelle - axe de broche (pose CAO)
-TOOL_R, TOOL_DY = 0.305, -0.128      # pointe d'outil : vers la broche depuis l'axe de tourelle, décalage axial (y)
+TOOL_R, TOOL_DY = 0.305, -0.140      # pointe d'outil : vers la broche depuis l'axe de tourelle, décalage axial (y)
+TOOL_EXT = -0.128 - TOOL_DY          # porte-outils VDI rallongés de 12 mm vers le mandrin (course Z réelle 533 mm)
 TUR_PARK = (0.0, 0.0)                # position de repos (Z chariot selon +y, X glissière) par rapport à la pose CAO
+# outils de la tourelle (12 postes tous les π/6) : poste k actif pour un angle de tourelle k·π/6 (ramené dans ]-π, π]).
+# Ébauche au poste 0 (actif au repos, quand le robot entre), finition au poste 11, gorge au poste 10 : les deux outils
+# inactifs pointent alors vers le bas (côté talus à copeaux), loin de l'ouverture de porte.
+TOOL_STATIONS = (("ebauche", 0), ("finition", 11), ("gorge", 10))
 TABLE = (0.0, 0.85, 0.70)            # centre, hauteur du dessus
 CRATES = {"BRUTS": (-0.25, 0.85), "FINIES": (0.25, 0.85)}
 CELL_X = (-0.12, 0.0, 0.12)
@@ -61,7 +66,7 @@ WHITE = app("0.93 0.93 0.91", 0.45, 0.1)
 ANTHRA = app("0.22 0.24 0.27", 0.5, 0.3)
 LGREY = app("0.62 0.64 0.66", 0.45, 0.4)
 LED = app("1 1 0.95", 0.3, 0, emissive="0.9 0.9 0.85")
-COOL = app("0.3 0.6 1", 0.1, 0, emissive="0.05 0.15 0.3", transp=0.45)
+COOL = app("0.3 0.6 1", 0.1, 0, emissive="0.05 0.15 0.3", transp=0.45)   # jet d'arrosage (PROTO HaasST20)
 RAW = app("0.40 0.41 0.43", 0.75, 0.6)
 MACH = app("0.80 0.82 0.85", 0.18, 1.0)
 SCHUNK = app("0.70 0.72 0.74", 0.3, 0.8)       # corps anodisé gris clair
@@ -109,6 +114,7 @@ w("#VRML_SIM R2025a utf8")
 for p in PROTOS:
     w('%sEXTERNPROTO "%s%s"' % ("IMPORTABLE " if p.endswith("Pedestrian.proto") else "", R, p))
 w('EXTERNPROTO "../protos/GuardBay.proto"')
+w('EXTERNPROTO "../protos/HaasST20.proto"')
 w("""WorldInfo {
   info [ "Cellule de tournage robotisee - 2 tours CNC face a face, UR10e, double pince SCHUNK, capteurs d'effort"
          "Keys (3D view focused): E = emergency stop, R = reset, P = operator walks in, S = end-of-cycle stop" ]
@@ -188,7 +194,6 @@ w('Solid { name "marquage sol" children [ %s ] locked TRUE }' % render(marks))
 # =============================================================== maillages (STEP -> OBJ)
 MESH = "../protos/meshes/egk40/%s.obj"
 EGK_ROT = (0, 0, 1, -math.pi / 2)                  # EGK axes (y = approach, z = jaws) -> gripper local frame
-HAAS_MESH = "../protos/meshes/haas_st20/st20_%s.obj"
 HAAS = json.load(open(os.path.join(HERE, "..", "protos", "meshes", "haas_st20", "haas_st20.json")))
 # matériaux de la palette du convertisseur : (rugosité, métallicité)
 HAAS_PBR = {"white": (0.45, 0.1), "grey": (0.5, 0.35), "steel": (0.3, 0.85), "dark": (0.55, 0.3),
@@ -201,23 +206,6 @@ def mesh(name, appearance):
 
 
 SHADOW_MAX_TRI = 21845                             # au-delà, Webots ne projette pas l'ombre d'un Mesh (avertissement)
-
-
-def haas_mesh(fn):
-    """Shape du tour Haas (fichier st20_*.obj, sommets dans le repère de son groupe), apparence selon son matériau.
-    Pas d'ombre pour la vitre ni pour les maillages trop lourds (fontes, tôles intérieures, disque de tourelle) :
-    l'ombre au sol vient du carénage blanc."""
-    info = HAAS["files"][fn]
-    rough, metal = HAAS_PBR[info["material"]]
-    a = app(f(info["colour"]), rough, metal, transp=info["transparency"])
-    cs = info["transparency"] or info["triangles"] > SHADOW_MAX_TRI
-    return 'Shape {%s appearance %s geometry Mesh { url "%s" } }' % (
-        " castShadows FALSE" if cs else "", a, HAAS_MESH % fn[len("st20_"):-len(".obj")])
-
-
-def haas_group(group, part=None):
-    return [haas_mesh(fn) for fn in sorted(HAAS["files"]) if HAAS["files"][fn]["group"] == group
-            and (part is None or HAAS["files"][fn]["part"] == part)]
 
 
 # cohérence des constantes recopiées à la main avec le maillage généré
@@ -268,9 +256,10 @@ def slide_box(x0, x1, y0, y1, n0, n1):
             ry_to(X_DIR))
 
 
-def lathe_bati():
+def lathe_bati(options=True):
     """Volumes de collision du bâti (repère tour), au plus près des maillages ; l'ouverture de porte (y -0.495..0.197,
-    z 0.79..1.975, plan x = -0.107) et l'ouverture du toit qui la prolonge (jusqu'à x = -0.56) restent libres."""
+    z 0.79..1.975, plan x = -0.107) et l'ouverture du toit qui la prolonge (jusqu'à x = -0.56) restent libres.
+    options : ajoute les parties fixes des options d'automatisation (options_col)."""
     a = math.atan2(0.39, 0.5)                                       # carter Z incliné (talus à copeaux)
     slant = ("box", (0.634, 0.825, 0.05), (-0.9 - 0.025 * math.sin(a), -0.1425, 0.955 - 0.025 * math.cos(a)),
              (0, 1, 0, a))
@@ -323,89 +312,117 @@ def lathe_bati():
             bx(-0.57, -0.05, 1.225, 1.60, 0.095, 0.70),               # convoyeur à copeaux : bac
             conv,
             bx(-0.575, -0.05, 1.90, 2.37, 1.10, 1.70),                # convoyeur à copeaux : tête
-            bx(-0.18, -0.10, 0.71, 0.79, 1.965, 2.27)]                # colonne lumineuse
+            bx(-0.18, -0.10, 0.71, 0.79, 1.965, 2.27)] + (               # colonne lumineuse
+        [b for k in sorted(options_col()) for b in options_col()[k]] if options else [])
 
 
 def door_col():
     """Porte (repère du groupe porte) : panneau avant, partie toit, poignée."""
     o = DOOR_CLOSED
+    x0, x1, y0, y1, z0, z1 = DOOR_LUG
     return [bx(-0.155 - o[0], -0.065 - o[0], 0.0, 0.809, 0.0, 1.258),
             bx(0.0, -0.155 - o[0], 0.0, 0.809, 1.183, 1.258),
-            bx(-0.065 - o[0], -0.024 - o[0], 0.692, 0.732, 0.34, 0.68)]
+            bx(-0.065 - o[0], -0.024 - o[0], 0.692, 0.732, 0.34, 0.68),
+            bx(x0 - o[0], x1 - o[0], y0 - o[1], y1 - o[1], z0 - o[2], z1 - o[2])]    # patte du vérin (porte auto)
+
+
+def station_rot(k):
+    """Rotation (autour de y, repère tourelle) de l'outil monté au poste k : l'angle de tourelle k·π/6 l'amène sur
+    la direction de travail U_TOOL."""
+    return -k * math.pi / 6
+
+
+def tool_col(turret_angle=0.0):
+    """Volumes de collision des outils (repère tourelle de la glissière, angle de tourelle donné) : même boîte pour
+    les 3 outils (porte-outil + plaquette, de 0.205 à 0.305 m de l'axe de tourelle)."""
+    a0 = math.atan2(-U_TOOL[2], U_TOOL[0])
+    out_ = []
+    for _, k in TOOL_STATIONS:
+        b = station_rot(k) + turret_angle
+        c, s_ = math.cos(b), math.sin(b)
+        x, z = 0.255 * U_TOOL[0], 0.255 * U_TOOL[2]
+        out_.append(("box", (0.10, 0.10 + TOOL_EXT, 0.06), (x * c + z * s_, -0.078 - TOOL_EXT / 2, -x * s_ + z * c),
+                     (0, 1, 0, a0 + b)))
+    return out_
+
+
+# =============================================================== options Haas d'automatisation du ST-20 (modélisation
+# procédurale, cotes supposées : la documentation Haas fournie ne les donne pas). Le bras de réglage d'outil
+# automatique (AD0072) est celui de la CAO Haas (maillage st20_presetter, rangé dans la pose CAO, couvert par les
+# volumes « palpeur d'outils » du bâti) : rien à ajouter ici.
+CATCH_PIVOT = (-0.22, -0.30, 0.79)     # récupérateur de pièces (M35/M36/M37) : axe du pivot (selon y), repère tour
+CATCH_L, CATCH_W = 0.25, 0.12          # goulotte : longueur (du pivot vers l'axe de broche), largeur selon y
+CATCH_STOW = -0.75                     # inclinaison de la goulotte rangée (rad, pointe vers le bas, au-dessus du bac à
+CATCH_TRAVEL = 1.33                    # copeaux) ; course du moteur jusqu'à la réception (+0.58 rad, pointe sous la pièce)
+CHUTE = ((-0.215, 0.785), (0.005, 0.565))  # descente fixe (x, z) : du pivot au bac extérieur, sous le bas de porte
+BIN = (0.005, 0.165, -0.37, -0.23, 0.40, 0.56)   # bac de réception extérieur, en façade côté poupée (bornes x, y, z)
+AIR_NOZZLE = (-0.28, -0.54, 1.42)      # soufflette automatique (M12/M13) fixée sur la tôle de poupée ...
+AIR_TARGET = (-0.40, -0.34, 1.10)      # ... visant le centre des mors
+DOOR_ACT = (-0.48, 2.035, -1.36, -0.60, 0.03)   # porte automatique : vérin sur le toit (x, z, y0, y1, rayon)
+DOOR_ROD = (0.15, 0.78, 0.011)         # tige portée par la porte : extrémité côté porte (y, porte fermée), longueur, rayon
+DOOR_LUG = (-0.50, -0.41, 0.13, 0.17, 1.975, 2.05)  # patte de la porte (porte fermée) : tige + came du contact
+DOOR_SW = (-0.44, -0.41, -0.64, -0.60, 2.015, 2.055)  # contact « porte complètement ouverte » (fixe, sur le toit)
+
+
+def catcher_col():
+    """Goulotte du récupérateur (repère du pivot, goulotte selon -x local, fond + bords)."""
+    return [("box", (CATCH_L, CATCH_W, 0.035), (-CATCH_L / 2, 0.0, 0.0125), None)]
+
+
+def options_col():
+    """Parties fixes des options (repère tour), par option : descente + bac + actionneur du récupérateur, soufflette,
+    vérin + supports + contact de la porte automatique."""
+    (xa, za), (xb, zb) = CHUTE
+    a = math.atan2(za - zb, xb - xa)
+    yc = CATCH_PIVOT[1]
+    d = [AIR_TARGET[i] - AIR_NOZZLE[i] for i in range(3)]
+    n = math.sqrt(sum(v * v for v in d))
+    tube = tuple(AIR_NOZZLE[i] + 0.035 * d[i] / n for i in range(3))
+    x, z, y0, y1, r = DOOR_ACT
+    return {"catcher": [("box", (math.hypot(xb - xa, zb - za), CATCH_W, 0.03),
+                         ((xa + xb) / 2, yc, (za + zb) / 2 + 0.012), (0, 1, 0, a)),
+                        bx(*BIN), bx(-0.02, BIN[0], BIN[2], BIN[3], 0.45, BIN[5]),
+                        bx(-0.245, -0.195, yc - CATCH_W / 2 - 0.02, yc - CATCH_W / 2, 0.765, 0.815)],
+            "airjet": [bx(AIR_NOZZLE[0] - 0.02, AIR_NOZZLE[0] + 0.02, -0.555, AIR_NOZZLE[1] + 0.015,
+                          AIR_NOZZLE[2] - 0.02, AIR_NOZZLE[2] + 0.02), ("cyl", (0.008, 0.07), tube, z_to(d))],
+            "door": [("cyl", (r, y1 - y0), (x, (y0 + y1) / 2, z), RX90),
+                     bx(-0.60, x + 0.02, -1.27, -1.24, z - 0.03, z + 0.015),
+                     bx(-0.60, x + 0.02, -0.70, -0.67, z - 0.03, z + 0.015), bx(*DOOR_SW)]}
 
 
 def lathe(prefix, pos, yaw, dynamic=True):
+    """Tour Haas ST-20 : instance du PROTO protos/HaasST20.proto (seule source de la géométrie, générée par
+    tools/gen_st20_proto.py) + volumes de collision exportés pour le vérificateur hors ligne. Tours actifs : l'automate
+    pilote les articulations internes du PROTO (DEF internes, getFromProtoDef + setJointPosition), les voyants et
+    l'arrosage par les champs du PROTO. Tours de décor : porte fermée, rien ne bouge."""
     fr = frame(pos, (0, 0, 1, yaw))
     col = lathe_bati()
-    p = haas_group("static")
-    p.append(render([box((1.56, 2.59, 0.095), app("0.32 0.33 0.34", 0.85, 0.1), (-0.84, -0.045, 0.0475)),  # plinthe
-                     box((2.0, 0.74, 0.095), app("0.32 0.33 0.34", 0.85, 0.1), (-1.06, 1.20, 0.0475))]))
-    # colonne lumineuse sur le toit, au-dessus du pupitre
-    lamps = []
-    for i, (c, e) in enumerate((("0.1 0.5 0.1", "G"), ("0.6 0.4 0.05", "O"), ("0.5 0.05 0.05", "R"))):
-        lamps.append('Pose { translation 0 0 %g children [ Shape { appearance %s geometry Cylinder { radius 0.035 '
-                     'height 0.07 } } ] }' % (0.10 + 0.075 * i, app(c, 0.3, 0, emissive="0 0 0", transp=0.1,
-                                                                    def_="%s_L%s" % (prefix, e) if dynamic else None)))
-    p.append('Pose { translation -0.14 0.75 1.965 children [ %s %s ] }' % (
-        render([cyl(0.012, 0.065, DARK, (0, 0, 0.0325)), cyl(0.036, 0.01, DARK, (0, 0, 0.005))]), " ".join(lamps)))
-    dyn = []
     if dynamic:
-        # porte coulissante (translation selon -y, course DOOR_TRAVEL)
         dcol = door_col()
-        dyn.append('DEF %s_DOOR Solid { translation %s name "porte" children [ %s ] boundingObject %s }'
-                   % (prefix, f(DOOR_CLOSED), " ".join(haas_group("door")), bo(dcol)))
         dopen = (DOOR_CLOSED[0], DOOR_CLOSED[1] - DOOR_TRAVEL, DOOR_CLOSED[2])
         register(prefix + "_DOOR", dcol, frame(dopen, None, fr), "door_open")
         register(prefix + "_DOOR", dcol, frame(DOOR_CLOSED, None, fr), "door_closed")
-        # mandrin 8" (corps + bague de nez) et ses 3 mors (pose CAO = serrage au rayon JAW_R0, translation radiale)
-        chuck_fr = frame((CX, CHUCK_FACE, CZ), None, fr)
-        jaws = []
-        for i, (dx, dz) in enumerate(JAW_DIRS):
-            jcol = [("box", (0.079, 0.042, 0.034), (0.0625 * dx, 0.021, 0.0625 * dz), ry_to((dx, 0, dz)))]
-            jaws.append('DEF %s_JAW%d Solid { translation 0 0 0 name "mors %d" children [ %s ] boundingObject %s }'
-                        % (prefix, i + 1, i + 1, " ".join(haas_group("jaws", "jaw_%d" % (i + 1))), bo(jcol)))
         # mors (ouverts) vus par le vérificateur hors ligne comme un disque r 0.105 devant le corps du mandrin
+        chuck_fr = frame((CX, CHUCK_FACE, CZ), None, fr)
         register(prefix + "_CHUCK", [("cyl", (0.105, 0.042), (0, 0.021, 0), RX90)], chuck_fr, "jaws")
         ccol = [("cyl", (0.105, 0.117), (0, -0.0585, 0), RX90), ("cyl", (0.127, 0.042), (0, -0.138, 0), RX90)]
-        dyn.append('DEF %s_CHUCK Solid { translation %g %g %g name "mandrin" children [ %s %s ] boundingObject %s }' % (
-            prefix, CX, CHUCK_FACE, CZ, " ".join(haas_group("spindle")), " ".join(jaws), bo(ccol)))
         register(prefix + "_CHUCK", ccol, chuck_fr, "chuck")
-        # chariot Z (translation selon y) portant la glissière X inclinée et la tourelle BOT 12 postes
+        # chariot Z + glissière X + tourelle au repos (pose où ils sont quand le robot entre : poste 0 actif)
         park_c = (TUR0[0], TUR0[1] + TUR_PARK[0], TUR0[2])
         park_t = tuple(TUR_PARK[1] * v for v in X_DIR)
         kcol = [slide_box(-0.64, 0.665, -0.046, 0.747, -0.06, 0.865)]
         tcol = [("cyl", (0.241, 0.109), (0, -0.0545, 0), RX90),                          # disque de tourelle
                 slide_box(-0.21, 0.641, -0.013, 0.59, -0.18, 0.305),                     # glissière X
-                slide_box(-0.11, 0.255, 0.59, 0.731, -0.126, 0.208),
-                ("box", (0.10, 0.10, 0.06), (0.255 * U_TOOL[0], -0.078, 0.255 * U_TOOL[2]), ry_to(U_TOOL))]  # outil
-        tool = [box((0.06, 0.07, 0.06), DARK, (0.245 * U_TOOL[0], -0.07, 0.245 * U_TOOL[2]), ry_to(U_TOOL)),
-                box((0.056, 0.024, 0.02), app("0.35 0.36 0.38", 0.4, 0.8),
-                    (0.268 * U_TOOL[0], TOOL_DY + 0.018, 0.268 * U_TOOL[2]), ry_to(U_TOOL)),
-                box((0.014, 0.006, 0.014), app("0.85 0.7 0.2", 0.3, 0.8),                # plaquette carbure
-                    ((TOOL_R - 0.007) * U_TOOL[0], TOOL_DY + 0.003, (TOOL_R - 0.007) * U_TOOL[2]), ry_to(U_TOOL))]
-        # buse d'arrosage et jet (DEF _COOLANT : échelle z 0.001 = coupé, 1 = arrosage) dirigés sur la pointe d'outil
-        noz = (0.235 * U_TOOL[0] + 0.035 * N_X[0], TOOL_DY + 0.004, 0.235 * U_TOOL[2] + 0.035 * N_X[2])
-        tip = ((TOOL_R - 0.004) * U_TOOL[0], TOOL_DY + 0.004, (TOOL_R - 0.004) * U_TOOL[2])
-        jet = [tip[i] - noz[i] for i in range(3)]
-        jl = math.sqrt(sum(v * v for v in jet))
-        back = tuple(noz[i] - 0.015 * jet[i] / jl for i in range(3))
-        tool.append(cyl(0.005, 0.03, app("0.2 0.2 0.22", 0.6), back, z_to(jet)))
-        tool.append('DEF %s_COOLANT Transform { translation %s rotation %s scale 1 1 0.001 children [ %s ] }' % (
-            prefix, f(noz), f(z_to(jet)), render([cyl(0.004, jl, COOL, (0, 0, jl / 2))])))
-        turret = ('DEF %s_TURRET Solid { translation %s name "tourelle" children [ %s %s ] boundingObject %s }' % (
-            prefix, f(park_t), " ".join(haas_group("turret")), render(tool), bo(tcol)))
-        dyn.append('DEF %s_CARRIAGE Solid { translation %s name "chariot" children [ %s %s ] boundingObject %s }' % (
-            prefix, f(park_c), " ".join(haas_group("carriage")), turret, bo(kcol)))
+                slide_box(-0.11, 0.255, 0.59, 0.731, -0.126, 0.208)] + tool_col(0.0)    # 3 outils
         cfr = frame(park_c, None, fr)
         register(prefix + "_TURRET", kcol, cfr, "turret")
         register(prefix + "_TURRET", tcol, frame(park_t, None, cfr), "turret")
     else:
-        # tours de décor : porte fermée, sans pièce mobile
-        p.append('Pose { translation %s children [ %s ] }' % (f(DOOR_CLOSED), " ".join(haas_group("door"))))
         col += [(k, d, tuple(c[i] + DOOR_CLOSED[i] for i in range(3)), r) for k, d, c, r in door_col()]
     register(prefix, col, fr, "bati")
-    w('DEF %s Solid { translation %s rotation 0 0 1 %g name "tour %s" children [ %s %s ] boundingObject %s }' % (
-        prefix, f(pos), yaw, prefix, " ".join(p), " ".join(dyn), bo(col)))
+    # goulotte du récupérateur de pièces, rangée (pointe vers le bas) : l'automate ne la sort jamais (le robot décharge)
+    register(prefix + "_CATCHER", catcher_col(), frame(CATCH_PIVOT, (0, 1, 0, CATCH_STOW), fr), "bati")
+    w('DEF %s HaasST20 { translation %s rotation 0 0 1 %g name "tour %s" }' % (prefix, f(pos), yaw, prefix))
 
 
 lathe("TOUR_A", (-LATHE_X, 0, 0), 0.0)

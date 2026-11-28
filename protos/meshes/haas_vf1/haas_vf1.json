@@ -1,0 +1,1466 @@
+{
+ "double_sided_triangles": 0,
+ "dropped_by_rule": [
+  "95-Gal Coolant Tank_VF-1_11_2021 / Default_defeature^10000005212",
+  "Chip_Auger_VF-1",
+  "SMTC_30_PCKT_Option_VF-1_11_2021 / 37-3445_DF_OB"
+ ],
+ "dropped_small_count": 10,
+ "files": {
+  "vf1_carousel_dark.obj": {
+   "bbox_group_frame": [
+    [
+     -0.3214,
+     -0.3213,
+     -0.0018
+    ],
+    [
+     0.3213,
+     0.3214,
+     0.0018
+    ]
+   ],
+   "bytes": 155218,
+   "cast_shadows": true,
+   "colour": [
+    0.22,
+    0.23,
+    0.24
+   ],
+   "group": "carousel",
+   "material": "dark",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 1852,
+   "vertices": 2320
+  },
+  "vf1_carousel_grey.obj": {
+   "bbox_group_frame": [
+    [
+     -0.3228,
+     -0.3227,
+     -0.0355
+    ],
+    [
+     0.3227,
+     0.3228,
+     -0.0022
+    ]
+   ],
+   "bytes": 125238,
+   "cast_shadows": true,
+   "colour": [
+    0.5,
+    0.52,
+    0.54
+   ],
+   "group": "carousel",
+   "material": "grey",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 1460,
+   "vertices": 1888
+  },
+  "vf1_changer_grey.obj": {
+   "bbox_group_frame": [
+    [
+     -0.3291,
+     -0.3308,
+     -0.0056
+    ],
+    [
+     0.3166,
+     0.3309,
+     0.3957
+    ]
+   ],
+   "bytes": 36760,
+   "cast_shadows": true,
+   "colour": [
+    0.5,
+    0.52,
+    0.54
+   ],
+   "group": "changer",
+   "material": "grey",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 482,
+   "vertices": 573
+  },
+  "vf1_door_left_steel.obj": {
+   "bbox_group_frame": [
+    [
+     0.2732,
+     -0.1906,
+     -0.2699
+    ],
+    [
+     0.3025,
+     -0.0918,
+     0.0583
+    ]
+   ],
+   "bytes": 34221,
+   "cast_shadows": true,
+   "colour": [
+    0.7,
+    0.71,
+    0.73
+   ],
+   "group": "door_left",
+   "material": "steel",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 520,
+   "vertices": 408
+  },
+  "vf1_door_left_white.obj": {
+   "bbox_group_frame": [
+    [
+     -0.3309,
+     -0.1918,
+     -0.5622
+    ],
+    [
+     0.3308,
+     0.1919,
+     0.5623
+    ]
+   ],
+   "bytes": 944101,
+   "cast_shadows": true,
+   "colour": [
+    0.86,
+    0.87,
+    0.87
+   ],
+   "group": "door_left",
+   "material": "white",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 11326,
+   "vertices": 12014
+  },
+  "vf1_door_left_window.obj": {
+   "bbox_group_frame": [
+    [
+     -0.2443,
+     -0.1201,
+     -0.3459
+    ],
+    [
+     0.2701,
+     -0.0485,
+     0.4725
+    ]
+   ],
+   "bytes": 517,
+   "cast_shadows": true,
+   "colour": [
+    0.72,
+    0.82,
+    0.86
+   ],
+   "group": "door_left",
+   "material": "window",
+   "part": "",
+   "transparency": 0.6,
+   "triangles": 4,
+   "vertices": 8
+  },
+  "vf1_door_right_steel.obj": {
+   "bbox_group_frame": [
+    [
+     -0.2908,
+     -0.1906,
+     -0.2545
+    ],
+    [
+     -0.2615,
+     -0.0918,
+     0.0737
+    ]
+   ],
+   "bytes": 34626,
+   "cast_shadows": true,
+   "colour": [
+    0.7,
+    0.71,
+    0.73
+   ],
+   "group": "door_right",
+   "material": "steel",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 520,
+   "vertices": 408
+  },
+  "vf1_door_right_white.obj": {
+   "bbox_group_frame": [
+    [
+     -0.319,
+     -0.1918,
+     -0.5753
+    ],
+    [
+     0.319,
+     0.1919,
+     0.5752
+    ]
+   ],
+   "bytes": 725766,
+   "cast_shadows": true,
+   "colour": [
+    0.86,
+    0.87,
+    0.87
+   ],
+   "group": "door_right",
+   "material": "white",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 8868,
+   "vertices": 9400
+  },
+  "vf1_door_right_window.obj": {
+   "bbox_group_frame": [
+    [
+     -0.2583,
+     -0.1201,
+     -0.3306
+    ],
+    [
+     0.2561,
+     -0.0485,
+     0.4879
+    ]
+   ],
+   "bytes": 523,
+   "cast_shadows": true,
+   "colour": [
+    0.72,
+    0.82,
+    0.86
+   ],
+   "group": "door_right",
+   "material": "window",
+   "part": "",
+   "transparency": 0.6,
+   "triangles": 4,
+   "vertices": 8
+  },
+  "vf1_head_black.obj": {
+   "bbox_group_frame": [
+    [
+     -0.15,
+     0.3899,
+     1.2822
+    ],
+    [
+     0.0681,
+     0.6957,
+     1.367
+    ]
+   ],
+   "bytes": 6142,
+   "cast_shadows": true,
+   "colour": [
+    0.05,
+    0.05,
+    0.05
+   ],
+   "group": "head",
+   "material": "black",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 84,
+   "vertices": 104
+  },
+  "vf1_head_dark.obj": {
+   "bbox_group_frame": [
+    [
+     -0.2043,
+     -0.1679,
+     0.0347
+    ],
+    [
+     0.2051,
+     0.4481,
+     1.2686
+    ]
+   ],
+   "bytes": 1160053,
+   "cast_shadows": true,
+   "colour": [
+    0.22,
+    0.23,
+    0.24
+   ],
+   "group": "head",
+   "material": "dark",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 14370,
+   "vertices": 14976
+  },
+  "vf1_head_grey.obj": {
+   "bbox_group_frame": [
+    [
+     -0.2043,
+     -0.1837,
+     0.0504
+    ],
+    [
+     0.2051,
+     0.5239,
+     1.2671
+    ]
+   ],
+   "bytes": 1109581,
+   "cast_shadows": true,
+   "colour": [
+    0.5,
+    0.52,
+    0.54
+   ],
+   "group": "head",
+   "material": "grey",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 12860,
+   "vertices": 15087
+  },
+  "vf1_head_steel.obj": {
+   "bbox_group_frame": [
+    [
+     -0.1558,
+     -0.0861,
+     0.0263
+    ],
+    [
+     0.1734,
+     0.1759,
+     0.3344
+    ]
+   ],
+   "bytes": 374447,
+   "cast_shadows": true,
+   "colour": [
+    0.7,
+    0.71,
+    0.73
+   ],
+   "group": "head",
+   "material": "steel",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 4792,
+   "vertices": 4823
+  },
+  "vf1_saddle_dark.obj": {
+   "bbox_group_frame": [
+    [
+     -0.6096,
+     -0.2037,
+     -0.0
+    ],
+    [
+     0.6096,
+     0.2036,
+     0.2669
+    ]
+   ],
+   "bytes": 201764,
+   "cast_shadows": true,
+   "colour": [
+    0.22,
+    0.23,
+    0.24
+   ],
+   "group": "saddle",
+   "material": "dark",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 2480,
+   "vertices": 3006
+  },
+  "vf1_spindle_steel.obj": {
+   "bbox_group_frame": [
+    [
+     -0.0652,
+     -0.0651,
+     0.0
+    ],
+    [
+     0.0651,
+     0.0652,
+     0.4354
+    ]
+   ],
+   "bytes": 677400,
+   "cast_shadows": true,
+   "colour": [
+    0.7,
+    0.71,
+    0.73
+   ],
+   "group": "spindle",
+   "material": "steel",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 8348,
+   "vertices": 8626
+  },
+  "vf1_static_black.obj": {
+   "bbox_group_frame": [
+    [
+     -0.4178,
+     -1.1949,
+     0.0
+    ],
+    [
+     1.0833,
+     0.7173,
+     1.8599
+    ]
+   ],
+   "bytes": 1127866,
+   "cast_shadows": true,
+   "colour": [
+    0.05,
+    0.05,
+    0.05
+   ],
+   "group": "static",
+   "material": "black",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 12545,
+   "vertices": 14771
+  },
+  "vf1_static_dark.obj": {
+   "bbox_group_frame": [
+    [
+     -1.1181,
+     -1.1949,
+     0.0225
+    ],
+    [
+     1.1425,
+     1.212,
+     1.8643
+    ]
+   ],
+   "bytes": 1688391,
+   "cast_shadows": true,
+   "colour": [
+    0.22,
+    0.23,
+    0.24
+   ],
+   "group": "static",
+   "material": "dark",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 19617,
+   "vertices": 22556
+  },
+  "vf1_static_grey_1.obj": {
+   "bbox_group_frame": [
+    [
+     -0.3889,
+     -0.7794,
+     0.0635
+    ],
+    [
+     0.3889,
+     0.6879,
+     1.9717
+    ]
+   ],
+   "bytes": 1870466,
+   "cast_shadows": true,
+   "colour": [
+    0.5,
+    0.52,
+    0.54
+   ],
+   "group": "static",
+   "material": "grey",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 21676,
+   "vertices": 23936
+  },
+  "vf1_static_grey_2.obj": {
+   "bbox_group_frame": [
+    [
+     -1.0247,
+     -0.5923,
+     0.6445
+    ],
+    [
+     0.3325,
+     0.693,
+     1.7955
+    ]
+   ],
+   "bytes": 1189142,
+   "cast_shadows": true,
+   "colour": [
+    0.5,
+    0.52,
+    0.54
+   ],
+   "group": "static",
+   "material": "grey",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 13714,
+   "vertices": 16117
+  },
+  "vf1_static_steel.obj": {
+   "bbox_group_frame": [
+    [
+     -0.0702,
+     -1.1538,
+     1.3127
+    ],
+    [
+     1.0898,
+     0.7072,
+     1.7879
+    ]
+   ],
+   "bytes": 174366,
+   "cast_shadows": true,
+   "colour": [
+    0.7,
+    0.71,
+    0.73
+   ],
+   "group": "static",
+   "material": "steel",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 2746,
+   "vertices": 1880
+  },
+  "vf1_static_white_1.obj": {
+   "bbox_group_frame": [
+    [
+     -1.1543,
+     -1.2896,
+     0.1467
+    ],
+    [
+     1.174,
+     0.9672,
+     2.3384
+    ]
+   ],
+   "bytes": 1880971,
+   "cast_shadows": true,
+   "colour": [
+    0.86,
+    0.87,
+    0.87
+   ],
+   "group": "static",
+   "material": "white",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 21817,
+   "vertices": 25310
+  },
+  "vf1_static_white_2.obj": {
+   "bbox_group_frame": [
+    [
+     -1.1655,
+     -1.1485,
+     0.1467
+    ],
+    [
+     1.1465,
+     0.1668,
+     1.822
+    ]
+   ],
+   "bytes": 1948039,
+   "cast_shadows": true,
+   "colour": [
+    0.86,
+    0.87,
+    0.87
+   ],
+   "group": "static",
+   "material": "white",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 21787,
+   "vertices": 24802
+  },
+  "vf1_static_white_3.obj": {
+   "bbox_group_frame": [
+    [
+     -1.1236,
+     -0.9869,
+     0.712
+    ],
+    [
+     0.5324,
+     -0.8018,
+     1.7524
+    ]
+   ],
+   "bytes": 32019,
+   "cast_shadows": true,
+   "colour": [
+    0.86,
+    0.87,
+    0.87
+   ],
+   "group": "static",
+   "material": "white",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 396,
+   "vertices": 432
+  },
+  "vf1_table_steel.obj": {
+   "bbox_group_frame": [
+    [
+     -0.3302,
+     -0.1943,
+     -0.208
+    ],
+    [
+     0.3302,
+     0.1944,
+     0.0
+    ]
+   ],
+   "bytes": 667925,
+   "cast_shadows": true,
+   "colour": [
+    0.7,
+    0.71,
+    0.73
+   ],
+   "group": "table",
+   "material": "steel",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 8144,
+   "vertices": 9170
+  }
+ },
+ "frame": "machine frame: x_m = x_h - 0.0035, y_m = -(z_h - 0.1917), z_m = y_h - (-0.5143) (STEP metres); origin on the floor at the centre of the levelling-pad footprint; x = machine X (table length), +y = towards the back (column), the front (doors, pendant) faces -y; z up",
+ "groups": {
+  "carousel": {
+   "axis": [
+    0,
+    0,
+    1
+   ],
+   "cad_pocket_angle_deg": -2.014,
+   "files": [
+    "vf1_carousel_dark.obj",
+    "vf1_carousel_grey.obj"
+   ],
+   "joint": "revolute",
+   "motor": "carousel motor",
+   "note": "carousel plate + 20 pocket clips; meshes pre-rotated by 2.014 deg so that at position 0 pocket 1 is at the change station (+x); pocket n sits at angle -(n-1)*18 deg, i.e. carousel position (n-1)*18 deg brings it to the station",
+   "origin": [
+    -0.522,
+    -0.289,
+    1.3453
+   ],
+   "parent": "changer",
+   "pitch_deg": 18.0,
+   "pocket_radius": 0.2921,
+   "pockets": 20
+  },
+  "changer": {
+   "axis": [
+    1,
+    0,
+    0
+   ],
+   "files": [
+    "vf1_changer_grey.obj"
+   ],
+   "joint": "prismatic",
+   "motor": "carousel slide motor",
+   "note": "umbrella carriage (shroud + hub), cut out of the fused solid 37-2104; slides +x until the station pocket is on the spindle axis",
+   "origin": [
+    -0.522,
+    -0.289,
+    1.3453
+   ],
+   "origin_def": "carousel axis at the pocket clip plane (V-groove height of the tools), carriage retracted (CAD pose)",
+   "range": [
+    0.0,
+    0.2295
+   ]
+  },
+  "door_left": {
+   "axis": [
+    -1,
+    0,
+    0
+   ],
+   "closed_bbox": [
+    [
+     -0.6582,
+     -1.0054,
+     0.6299
+    ],
+    [
+     0.0035,
+     -0.6217,
+     1.7544
+    ]
+   ],
+   "files": [
+    "vf1_door_left_steel.obj",
+    "vf1_door_left_white.obj",
+    "vf1_door_left_window.obj"
+   ],
+   "joint": "prismatic",
+   "motor": "door left motor",
+   "note": "opens towards -x behind the left front panel; travel measured by sweeping the door against the enclosure (first contact at 405 mm, minus 5 mm clearance)",
+   "origin": [
+    -0.3273,
+    -0.8136,
+    1.1921
+   ],
+   "origin_def": "bbox centre of the closed door",
+   "range": [
+    0.0,
+    0.4
+   ]
+  },
+  "door_right": {
+   "axis": [
+    1,
+    0,
+    0
+   ],
+   "closed_bbox": [
+    [
+     0.0035,
+     -1.0052,
+     0.6039
+    ],
+    [
+     0.6415,
+     -0.6215,
+     1.7544
+    ]
+   ],
+   "files": [
+    "vf1_door_right_steel.obj",
+    "vf1_door_right_white.obj",
+    "vf1_door_right_window.obj"
+   ],
+   "joint": "prismatic",
+   "motor": "door right motor",
+   "note": "opens towards +x behind the right front panel (pendant side). Same travel as the left door: in the STEP the right front panel is a defeatured SOLID block, so the door pocket is not modelled and the door slides into that block (hidden)",
+   "origin": [
+    0.3225,
+    -0.8134,
+    1.1792
+   ],
+   "origin_def": "bbox centre of the closed door",
+   "range": [
+    0.0,
+    0.4
+   ]
+  },
+  "head": {
+   "axis": [
+    0,
+    0,
+    1
+   ],
+   "cad_position": 0.0,
+   "files": [
+    "vf1_head_black.obj",
+    "vf1_head_dark.obj",
+    "vf1_head_grey.obj",
+    "vf1_head_steel.obj"
+   ],
+   "joint": "prismatic",
+   "motor": "z motor",
+   "note": "Z axis: position 0 = head at the top (CAD pose, Haas Z home); negative = down",
+   "origin": [
+    -0.0004,
+    -0.2893,
+    1.4788
+   ],
+   "origin_def": "spindle axis at the lowest point of the spindle",
+   "range": [
+    -0.508,
+    0.0
+   ],
+   "travel": 0.508
+  },
+  "saddle": {
+   "axis": [
+    0,
+    1,
+    0
+   ],
+   "cad_position": -0.203,
+   "files": [
+    "vf1_saddle_dark.obj"
+   ],
+   "joint": "prismatic",
+   "motor": "y motor",
+   "note": "Y axis: position 0 = table centred under the spindle; + = table towards the back. CAD pose = table fully forward (position -0.203)",
+   "origin": [
+    -0.0095,
+    -0.4998,
+    0.4749
+   ],
+   "origin_def": "saddle bbox centre (x, y), underside (z)",
+   "range": [
+    -0.203,
+    0.203
+   ],
+   "travel": 0.406
+  },
+  "spindle": {
+   "axis": [
+    0,
+    0,
+    1
+   ],
+   "files": [
+    "vf1_spindle_steel.obj"
+   ],
+   "joint": "revolute",
+   "motor": "spindle motor",
+   "note": "rotating nose of the spindle (parts within 75 mm of the axis, below y_h = 1035 mm); the cartridge housing stays in head",
+   "origin": [
+    -0.0004,
+    -0.2893,
+    1.4788
+   ],
+   "origin_def": "same as head",
+   "parent": "head"
+  },
+  "static": {
+   "files": [
+    "vf1_static_black.obj",
+    "vf1_static_dark.obj",
+    "vf1_static_grey_1.obj",
+    "vf1_static_grey_2.obj",
+    "vf1_static_steel.obj",
+    "vf1_static_white_1.obj",
+    "vf1_static_white_2.obj",
+    "vf1_static_white_3.obj"
+   ],
+   "joint": "fixed",
+   "origin": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "table": {
+   "axis": [
+    1,
+    0,
+    0
+   ],
+   "cad_position": -0.254,
+   "files": [
+    "vf1_table_steel.obj"
+   ],
+   "joint": "prismatic",
+   "motor": "x motor",
+   "note": "X axis: position 0 = table centred under the spindle; + = table towards +x. CAD pose = position -0.254",
+   "origin": [
+    -0.2555,
+    -0.4967,
+    0.8655
+   ],
+   "origin_def": "table top centre (CAD pose)",
+   "parent": "saddle",
+   "range": [
+    -0.254,
+    0.254
+   ],
+   "travel": 0.508
+  }
+ },
+ "key_positions": {
+  "castings_bbox": [
+   [
+    -0.3889,
+    -0.7794,
+    0.0635
+   ],
+   [
+    0.3889,
+    0.6879,
+    1.9717
+   ]
+  ],
+  "door_opening_when_open": {
+   "note": "clear width between the inner edges of the two doors when both are fully open",
+   "x": [
+    -0.3965,
+    0.4035
+   ]
+  },
+  "door_skin": {
+   "normal_step": [
+    -0.0,
+    0.08716,
+    0.99619
+   ],
+   "note": "door skin plane n . p = w in STEP mm; leans back by tilt_deg",
+   "tilt_deg": 5.0,
+   "w_mm": 1154.05
+  },
+  "door_travel": 0.4,
+  "envelope": [
+   [
+    -1.1655,
+    -1.2896,
+    0.0
+   ],
+   [
+    1.174,
+    1.212,
+    2.8458
+   ]
+  ],
+  "floor_z": 0.0,
+  "group_bboxes_cad": {
+   "carousel": [
+    [
+     -0.8448,
+     -0.6117,
+     1.3098
+    ],
+    [
+     -0.1993,
+     0.0338,
+     1.347
+    ]
+   ],
+   "changer": [
+    [
+     -0.851,
+     -0.6198,
+     1.3397
+    ],
+    [
+     -0.2054,
+     0.0419,
+     1.741
+    ]
+   ],
+   "door_left": [
+    [
+     -0.6582,
+     -1.0054,
+     0.6299
+    ],
+    [
+     0.0035,
+     -0.6217,
+     1.7544
+    ]
+   ],
+   "door_right": [
+    [
+     0.0035,
+     -1.0052,
+     0.6039
+    ],
+    [
+     0.6415,
+     -0.6215,
+     1.7544
+    ]
+   ],
+   "head": [
+    [
+     -0.2047,
+     -0.473,
+     1.5051
+    ],
+    [
+     0.2047,
+     0.4064,
+     2.8458
+    ]
+   ],
+   "saddle": [
+    [
+     -0.6191,
+     -0.7035,
+     0.4749
+    ],
+    [
+     0.6001,
+     -0.2962,
+     0.7418
+    ]
+   ],
+   "spindle": [
+    [
+     -0.0656,
+     -0.3544,
+     1.4788
+    ],
+    [
+     0.0647,
+     -0.2241,
+     1.9142
+    ]
+   ],
+   "static": [
+    [
+     -1.1655,
+     -1.2896,
+     0.0
+    ],
+    [
+     1.174,
+     1.212,
+     2.3384
+    ]
+   ],
+   "table": [
+    [
+     -0.5857,
+     -0.691,
+     0.6575
+    ],
+    [
+     0.0747,
+     -0.3023,
+     0.8655
+    ]
+   ]
+  },
+  "head_bbox_cad": [
+   [
+    -0.2047,
+    -0.473,
+    1.5051
+   ],
+   [
+    0.2047,
+    0.4064,
+    2.8458
+   ]
+  ],
+  "pads_bbox": [
+   [
+    -0.4225,
+    -0.7209,
+    0.0
+   ],
+   [
+    0.4225,
+    0.7209,
+    0.0572
+   ]
+  ],
+  "pendant_bbox": [
+   [
+    0.6123,
+    -1.1949,
+    1.2608
+   ],
+   [
+    1.0898,
+    -1.0685,
+    1.8644
+   ]
+  ],
+  "rear_cabinet_door": {
+   "closed_bbox": [
+    [
+     -0.4533,
+     0.9287,
+     0.718
+    ],
+    [
+     0.461,
+     0.9672,
+     1.9377
+    ]
+   ],
+   "gap_to_cabinet_mm": 1.0,
+   "hinge_axis": [
+    0,
+    0,
+    1
+   ],
+   "hinge_xy": [
+    0.4485,
+    0.9302
+   ],
+   "note": "electrical cabinet door, open at 90 deg in the STEP and fused into the enclosure solid: cut out, turned +90 deg about its vertical hinge (counter-clockwise seen from above): hinge edge flush with the cabinet side wall, flanges 1.0 mm off the cabinet back; static",
+   "overlap_mm3": 0.0,
+   "rotation_deg": 90.0,
+   "volumes_cm3": {
+    "door": 28092.8,
+    "rest": 565655.8,
+    "solid": 593748.6
+   },
+   "width": 0.9144
+  },
+  "saddle_bbox_cad": [
+   [
+    -0.6191,
+    -0.7035,
+    0.4749
+   ],
+   [
+    0.6001,
+    -0.2962,
+    0.7418
+   ]
+  ],
+  "spindle_axis_xy": [
+   -0.0004,
+   -0.2893
+  ],
+  "spindle_lowest_z_cad": 1.4788,
+  "spindle_lowest_z_min": 0.9708,
+  "spindle_to_table_cad_mm": 613.3,
+  "spindle_to_table_min_mm": 105.3,
+  "table_bbox_cad": [
+   [
+    -0.5857,
+    -0.691,
+    0.6575
+   ],
+   [
+    0.0747,
+    -0.3023,
+    0.8655
+   ]
+  ],
+  "table_top_z": 0.8655,
+  "tool_change": {
+   "groove_to_nose": 0.011,
+   "groove_z": 1.3453,
+   "head_parts_through_keyhole": 5,
+   "keyhole_radius": 0.0952,
+   "note": "z_clamp: Z (z motor) where the spindle nose is 11 mm above the pocket clip plane (CAT40 V-groove), i.e. a tool clamped in the spindle sits in the station pocket; z_release = Z top (CAD pose): the knob of a tool left in the pocket clears the nose. The Z travel of the model ([-0.508, 0], 0 = CAD top) is kept: the tool change happens at the top of it.",
+   "pocket_radius": 0.2921,
+   "shroud_clearance_cuts": [
+    {
+     "box_step_mm": [
+      [
+       -403.5,
+       964.0,
+       142.9
+      ],
+      [
+       34.8,
+       971.0,
+       597.8
+      ]
+     ],
+     "part": "Spindle Head_VF-1_11_2021 / 37-0282_DF_2(Defualt_defeature) / Defualt_defeature^37-0282_DF_2"
+    },
+    {
+     "box_step_mm": [
+      [
+       -403.5,
+       951.7,
+       142.9
+      ],
+      [
+       65.9,
+       971.0,
+       398.8
+      ]
+     ],
+     "part": "Spindle Head_VF-1_11_2021 / 37-0282_DF_2(Defualt_defeature) / Defualt_defeature^37-0282_DF_2"
+    },
+    {
+     "box_step_mm": [
+      [
+       -389.7,
+       934.1,
+       347.4
+      ],
+      [
+       41.0,
+       971.0,
+       644.0
+      ]
+     ],
+     "part": "Spindle Head_VF-1_11_2021 / 37-0282_DF_2(Defualt_defeature) / Defualt_defeature^37-0282_DF_2"
+    },
+    {
+     "box_step_mm": [
+      [
+       -327.1,
+       912.2,
+       568.3
+      ],
+      [
+       -56.7,
+       971.0,
+       606.3
+      ]
+     ],
+     "part": "Spindle Head_VF-1_11_2021 / 37-0282_DF_2(Defualt_defeature) / Defualt_defeature^37-0282_DF_2"
+    },
+    {
+     "box_step_mm": [
+      [
+       -388.3,
+       912.2,
+       387.0
+      ],
+      [
+       -121.8,
+       971.0,
+       428.2
+      ]
+     ],
+     "part": "Spindle Head_VF-1_11_2021 / 37-0282_DF_2(Defualt_defeature) / Defualt_defeature^37-0282_DF_2"
+    },
+    {
+     "box_step_mm": [
+      [
+       -337.2,
+       918.4,
+       561.8
+      ],
+      [
+       -73.8,
+       971.0,
+       594.5
+      ]
+     ],
+     "part": "Spindle Head_VF-1_11_2021 / 37-0282_DF_2(Defualt_defeature) / Defualt_defeature^37-0282_DF_2"
+    },
+    {
+     "box_step_mm": [
+      [
+       -378.8,
+       918.4,
+       377.0
+      ],
+      [
+       -118.2,
+       971.0,
+       410.5
+      ]
+     ],
+     "part": "Spindle Head_VF-1_11_2021 / 37-0282_DF_2(Defualt_defeature) / Defualt_defeature^37-0282_DF_2"
+    },
+    {
+     "box_step_mm": [
+      [
+       -379.2,
+       886.4,
+       400.5
+      ],
+      [
+       -100.7,
+       971.0,
+       437.0
+      ]
+     ],
+     "part": "Spindle Head_VF-1_11_2021 / 37-0282_DF_2(Defualt_defeature) / Defualt_defeature^37-0282_DF_2"
+    },
+    {
+     "box_step_mm": [
+      [
+       -313.7,
+       886.5,
+       550.5
+      ],
+      [
+       -44.8,
+       971.0,
+       598.5
+      ]
+     ],
+     "part": "Spindle Head_VF-1_11_2021 / 37-0282_DF_2(Defualt_defeature) / Defualt_defeature^37-0282_DF_2"
+    },
+    {
+     "box_step_mm": [
+      [
+       -375.0,
+       930.9,
+       449.6
+      ],
+      [
+       -98.6,
+       971.0,
+       480.6
+      ]
+     ],
+     "part": "Spindle Head_VF-1_11_2021 / 37-0282_DF_2(Defualt_defeature) / Defualt_defeature^37-0282_DF_2"
+    },
+    {
+     "box_step_mm": [
+      [
+       -243.4,
+       930.9,
+       580.3
+      ],
+      [
+       17.1,
+       971.0,
+       627.2
+      ]
+     ],
+     "part": "Spindle Head_VF-1_11_2021 / 37-0282_DF_2(Defualt_defeature) / Defualt_defeature^37-0282_DF_2"
+    },
+    {
+     "box_step_mm": [
+      [
+       -359.1,
+       929.1,
+       454.3
+      ],
+      [
+       -108.0,
+       971.0,
+       475.9
+      ]
+     ],
+     "part": "Spindle Head_VF-1_11_2021 / 37-0282_DF_2(Defualt_defeature) / Defualt_defeature^37-0282_DF_2"
+    },
+    {
+     "box_step_mm": [
+      [
+       -405.0,
+       955.4,
+       142.9
+      ],
+      [
+       34.8,
+       971.0,
+       655.0
+      ]
+     ],
+     "part": "Spindle Head_VF-1_11_2021 / 37-0282_DF_2(Defualt_defeature) / Defualt_defeature^37-0282_DF_2"
+    }
+   ],
+   "shroud_radius": 0.3308,
+   "shroud_top_z": 1.4842,
+   "shroud_volume_removed_cm3": 188.5,
+   "slide_travel": 0.2295,
+   "station_y_misalignment_mm": 0.31,
+   "z_clamp": -0.1225,
+   "z_release": 0.0
+  },
+  "tool_changer_bbox": [
+   [
+    -1.0247,
+    -0.6198,
+    1.3098
+   ],
+   [
+    0.2898,
+    0.4618,
+    1.7955
+   ]
+  ],
+  "tools": [
+   {
+    "length_below_groove": 0.118,
+    "max_radius_below_flange": 0.02,
+    "n": 1,
+    "name": "end mill D12"
+   },
+   {
+    "length_below_groove": 0.165,
+    "max_radius_below_flange": 0.025,
+    "n": 2,
+    "name": "drill D8.5"
+   },
+   {
+    "length_below_groove": 0.09,
+    "max_radius_below_flange": 0.0318,
+    "n": 3,
+    "name": "face mill D63"
+   },
+   {
+    "length_below_groove": 0.107,
+    "max_radius_below_flange": 0.022,
+    "n": 4,
+    "name": "end mill D20"
+   },
+   {
+    "length_below_groove": 0.1,
+    "max_radius_below_flange": 0.018,
+    "n": 5,
+    "name": "spot drill D10"
+   },
+   {
+    "length_below_groove": 0.128,
+    "max_radius_below_flange": 0.021,
+    "n": 6,
+    "name": "tap M10"
+   },
+   {
+    "length_below_groove": 0.115,
+    "max_radius_below_flange": 0.016,
+    "n": 7,
+    "name": "ball mill D10"
+   },
+   {
+    "length_below_groove": 0.088,
+    "max_radius_below_flange": 0.02,
+    "n": 8,
+    "name": "chamfer mill D16"
+   }
+  ],
+  "window_panes": {
+   "door_left": [
+    [
+     -0.5716,
+     -0.9337,
+     0.8462
+    ],
+    [
+     -0.0572,
+     -0.8621,
+     1.6646
+    ]
+   ],
+   "door_right": [
+    [
+     0.0642,
+     -0.9335,
+     0.8487
+    ],
+    [
+     0.5786,
+     -0.8619,
+     1.6671
+    ]
+   ]
+  }
+ },
+ "source": "VF-1_STEP_11_2021.STEP",
+ "tessellation": {
+  "default_angle_rad": 0.5,
+  "default_deflection_mm": 2.0,
+  "min_diag_mm": 25.0,
+  "shadow_max_triangles": 21845
+ },
+ "total_triangles": 190412,
+ "units": "metres; each file's vertices are in its group frame = machine frame translated to the group origin (group origins given for the CAD pose)"
+}

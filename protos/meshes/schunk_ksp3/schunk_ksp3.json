@@ -1,0 +1,446 @@
+{
+ "attribution": "CAD data: CADENAS GmbH, component: SCHUNK SE & Co. KG",
+ "licence": "CC BY-ND 4.0 (https://creativecommons.org/licenses/by-nd/4.0/)",
+ "licence_note": "meshes = format conversion of the SCHUNK/CADENAS STEP (no modification of the shape); keep the attribution with any redistribution",
+ "sizes": {
+  "100": {
+   "body_length_mm": 100.01,
+   "designation": "KSP3-F 100-AS-PM",
+   "files": {
+    "ksp3_100_body.obj": {
+     "bbox": [
+      [
+       -0.05,
+       -0.05,
+       -0.015
+      ],
+      [
+       0.05,
+       0.05,
+       0.068
+      ]
+     ],
+     "bytes": 1170797,
+     "cast_shadows": true,
+     "colour": [
+      0.24,
+      0.26,
+      0.29
+     ],
+     "group": "body",
+     "material": "body",
+     "triangles": 14242,
+     "vertices": 14340
+    },
+    "ksp3_100_jaw_a.obj": {
+     "bbox": [
+      [
+       -0.05,
+       -0.027,
+       0.0392
+      ],
+      [
+       -0.009,
+       0.027,
+       0.0717
+      ]
+     ],
+     "bytes": 789965,
+     "cast_shadows": true,
+     "colour": [
+      0.72,
+      0.73,
+      0.75
+     ],
+     "group": "jaw_a",
+     "material": "jaw",
+     "triangles": 9814,
+     "vertices": 10027
+    },
+    "ksp3_100_jaw_b.obj": {
+     "bbox": [
+      [
+       0.0066,
+       -0.027,
+       0.0392
+      ],
+      [
+       0.05,
+       0.027,
+       0.0717
+      ]
+     ],
+     "bytes": 779145,
+     "cast_shadows": true,
+     "colour": [
+      0.72,
+      0.73,
+      0.75
+     ],
+     "group": "jaw_b",
+     "material": "jaw",
+     "triangles": 9814,
+     "vertices": 10027
+    }
+   },
+   "frame": "vice frame: origin at the centre of the mounting face, x = jaw stroke axis, z up; x_v = z_s + L/2, y_v = x_s, z_v = y_s (STEP metres)",
+   "groups": {
+    "body": {
+     "bbox_open": [
+      [
+       -0.05,
+       -0.05,
+       -0.015
+      ],
+      [
+       0.05,
+       0.05,
+       0.068
+      ]
+     ],
+     "cad_part": "SCHUNK-1382566-F GK 100",
+     "files": [
+      "ksp3_100_body.obj"
+     ],
+     "joint": "fixed",
+     "origin": [
+      0,
+      0,
+      0
+     ]
+    },
+    "jaw_a": {
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "bbox_open": [
+      [
+       -0.05,
+       -0.027,
+       0.0392
+      ],
+      [
+       -0.009,
+       0.027,
+       0.0717
+      ]
+     ],
+     "cad_part": "SCHUNK-1411153-1 GBA 100-PM",
+     "files": [
+      "ksp3_100_jaw_a.obj"
+     ],
+     "joint": "prismatic",
+     "note": "position 0 = open (CAD pose), + = closing towards the centre",
+     "origin": [
+      0,
+      0,
+      0
+     ],
+     "range": [
+      0.0,
+      0.004
+     ]
+    },
+    "jaw_b": {
+     "axis": [
+      -1,
+      0,
+      0
+     ],
+     "bbox_open": [
+      [
+       0.0066,
+       -0.027,
+       0.0392
+      ],
+      [
+       0.05,
+       0.027,
+       0.0717
+      ]
+     ],
+     "cad_part": "SCHUNK-1411146-1 GBA-100-PM",
+     "files": [
+      "ksp3_100_jaw_b.obj"
+     ],
+     "joint": "prismatic",
+     "note": "mirror of jaw_a; coupled to it (centric vice)",
+     "origin": [
+      0,
+      0,
+      0
+     ],
+     "range": [
+      0.0,
+      0.004
+     ]
+    }
+   },
+   "key_positions": {
+    "base_jaw_top_z": 0.0717,
+    "base_jaw_width_y": 0.054,
+    "body_bbox": [
+     [
+      -0.05,
+      -0.05,
+      -0.015
+     ],
+     [
+      0.05,
+      0.05,
+      0.068
+     ]
+    ],
+    "body_size_xy": [
+     0.1,
+     0.1
+    ],
+    "body_top_in_gap_z": 0.068,
+    "clamping_force_N": 14500.0,
+    "closing_time_s": 0.2,
+    "jaw_gap_centre_x": -0.0012,
+    "jaw_gap_closed": 0.0076,
+    "jaw_gap_open": 0.0156,
+    "jaw_inner_faces_open_x": [
+     -0.009,
+     0.0066
+    ],
+    "jaw_speed": 0.02,
+    "mounting_face_z": 0.0,
+    "note": "catalogue: stroke, force, pressure 3-7 bar, closing time (160: assumed). Open pose = CAD pose (outer jaw faces flush with the body ends, hole patterns symmetric about x = 0). Top jaws (procedural, in the PROTO) sit on the base jaw serration at top_jaw_seat_z (serration engagement 2.5 mm, assumed)",
+    "screws_below_mounting_face": 0.015,
+    "stroke_per_jaw": 0.004,
+    "top_jaw_seat_z": 0.0692
+   },
+   "order_no": "1433684",
+   "source": "SCHUNK-1433684 KSP3-F 100-AS-PM_ 0.stp",
+   "tessellation": {
+    "angle_rad": 0.35,
+    "deflection_mm": 0.12
+   },
+   "total_triangles": 33870
+  },
+  "160": {
+   "body_length_mm": 160.01,
+   "designation": "KSP3-F 160",
+   "files": {
+    "ksp3_160_body.obj": {
+     "bbox": [
+      [
+       -0.08,
+       -0.08,
+       -0.018
+      ],
+      [
+       0.08,
+       0.08,
+       0.081
+      ]
+     ],
+     "bytes": 1295678,
+     "cast_shadows": true,
+     "colour": [
+      0.24,
+      0.26,
+      0.29
+     ],
+     "group": "body",
+     "material": "body",
+     "triangles": 15928,
+     "vertices": 15460
+    },
+    "ksp3_160_jaw_a.obj": {
+     "bbox": [
+      [
+       -0.08,
+       -0.044,
+       0.0462
+      ],
+      [
+       -0.009,
+       0.044,
+       0.084
+      ]
+     ],
+     "bytes": 1059223,
+     "cast_shadows": true,
+     "colour": [
+      0.72,
+      0.73,
+      0.75
+     ],
+     "group": "jaw_a",
+     "material": "jaw",
+     "triangles": 12512,
+     "vertices": 13706
+    },
+    "ksp3_160_jaw_b.obj": {
+     "bbox": [
+      [
+       0.008,
+       -0.044,
+       0.0462
+      ],
+      [
+       0.08,
+       0.044,
+       0.084
+      ]
+     ],
+     "bytes": 1045516,
+     "cast_shadows": true,
+     "colour": [
+      0.72,
+      0.73,
+      0.75
+     ],
+     "group": "jaw_b",
+     "material": "jaw",
+     "triangles": 12512,
+     "vertices": 13706
+    }
+   },
+   "frame": "vice frame: origin at the centre of the mounting face, x = jaw stroke axis, z up; x_v = z_s + L/2, y_v = x_s, z_v = y_s (STEP metres)",
+   "groups": {
+    "body": {
+     "bbox_open": [
+      [
+       -0.08,
+       -0.08,
+       -0.018
+      ],
+      [
+       0.08,
+       0.08,
+       0.081
+      ]
+     ],
+     "cad_part": "SCHUNK-1412617-F GK 160",
+     "files": [
+      "ksp3_160_body.obj"
+     ],
+     "joint": "fixed",
+     "origin": [
+      0,
+      0,
+      0
+     ]
+    },
+    "jaw_a": {
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "bbox_open": [
+      [
+       -0.08,
+       -0.044,
+       0.0462
+      ],
+      [
+       -0.009,
+       0.044,
+       0.084
+      ]
+     ],
+     "cad_part": "SCHUNK-1412755 GBA 160",
+     "files": [
+      "ksp3_160_jaw_a.obj"
+     ],
+     "joint": "prismatic",
+     "note": "position 0 = open (CAD pose), + = closing towards the centre",
+     "origin": [
+      0,
+      0,
+      0
+     ],
+     "range": [
+      0.0,
+      0.006
+     ]
+    },
+    "jaw_b": {
+     "axis": [
+      -1,
+      0,
+      0
+     ],
+     "bbox_open": [
+      [
+       0.008,
+       -0.044,
+       0.0462
+      ],
+      [
+       0.08,
+       0.044,
+       0.084
+      ]
+     ],
+     "cad_part": "SCHUNK-1412742 GBA-160",
+     "files": [
+      "ksp3_160_jaw_b.obj"
+     ],
+     "joint": "prismatic",
+     "note": "mirror of jaw_a; coupled to it (centric vice)",
+     "origin": [
+      0,
+      0,
+      0
+     ],
+     "range": [
+      0.0,
+      0.006
+     ]
+    }
+   },
+   "key_positions": {
+    "base_jaw_top_z": 0.084,
+    "base_jaw_width_y": 0.088,
+    "body_bbox": [
+     [
+      -0.08,
+      -0.08,
+      -0.018
+     ],
+     [
+      0.08,
+      0.08,
+      0.081
+     ]
+    ],
+    "body_size_xy": [
+     0.16,
+     0.16
+    ],
+    "body_top_in_gap_z": 0.081,
+    "clamping_force_N": 45000.0,
+    "closing_time_s": 0.3,
+    "jaw_gap_centre_x": -0.0005,
+    "jaw_gap_closed": 0.005,
+    "jaw_gap_open": 0.017,
+    "jaw_inner_faces_open_x": [
+     -0.009,
+     0.008
+    ],
+    "jaw_speed": 0.02,
+    "mounting_face_z": 0.0,
+    "note": "catalogue: stroke, force, pressure 3-7 bar, closing time (160: assumed). Open pose = CAD pose (outer jaw faces flush with the body ends, hole patterns symmetric about x = 0). Top jaws (procedural, in the PROTO) sit on the base jaw serration at top_jaw_seat_z (serration engagement 2.5 mm, assumed)",
+    "screws_below_mounting_face": 0.018,
+    "stroke_per_jaw": 0.006,
+    "top_jaw_seat_z": 0.0815
+   },
+   "order_no": "1409350",
+   "source": "SCHUNK-1409350 KSP3-F 160_ 0.stp",
+   "tessellation": {
+    "angle_rad": 0.35,
+    "deflection_mm": 0.18
+   },
+   "total_triangles": 40952
+  }
+ },
+ "units": "metres"
+}

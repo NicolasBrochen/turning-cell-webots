@@ -63,13 +63,22 @@ webots worlds/tournage.wbt
 |---|---|
 | Robot | `UR10e` (bibliothèque officielle Webots, Universal Robots) sur socle acier |
 | Double pince | 2 × **SCHUNK EGK 40-MB-M-B** (ID 1491762) : corps et mors de base issus du fichier STEP SCHUNK ([`cad/`](cad/), converti en OBJ par [`tools/step_to_obj.py`](tools/step_to_obj.py)), mors sur glissières motorisées avec la course réelle (6 mm par mors) et l'effort de serrage réel (140 N). Construits pour ce projet : capteur d'effort 6 axes, plaque d'adaptation, support coudé à 90° avec goussets (pinces à ±45° de l'axe de la bride), doigts sur mesure (pince 1 pour les bruts Ø50, pince 2 pour l'extrémité Ø30 des pièces finies) avec patins et capteurs de contact. Géométrie dans [`dual_gripper.py`](controllers/ur_tending/dual_gripper.py) |
-| Tours CNC | 2 × **Haas ST-20**, d'après le modèle 3D du constructeur (STEP converti par [`tools/haas_to_meshes.py`](tools/haas_to_meshes.py) en 17 maillages OBJ groupés par corps mobile, ≈ 211 000 triangles par tour, sur socle de mise à niveau de 95 mm). Animés par l'automate : porte coulissante (0,72 m vers la poupée), broche et mandrin 3 mors 8" (mors découpés du corps, course radiale), chariot Z et tourelle 12 postes sur la glissière X du banc incliné à 55°, arrosage. Ajoutés pour ce projet : vitre, porte-outil et plaquette, colonne lumineuse |
+| Tours CNC | 2 × **Haas ST-20**, d'après le modèle 3D du constructeur (STEP converti par [`tools/haas_to_meshes.py`](tools/haas_to_meshes.py) en 17 maillages OBJ groupés par corps mobile, ≈ 211 000 triangles par tour, sur socle de mise à niveau de 95 mm). Animés par l'automate : porte coulissante (0,72 m vers la poupée), broche et mandrin 3 mors 8" (mors découpés du corps, course radiale), chariot Z et tourelle 12 postes sur la glissière X du banc incliné à 55°, arrosage. Regroupés dans le PROTO réutilisable [`HaasST20.proto`](protos/HaasST20.proto) (un moteur par corps mobile, voir plus bas). Ajoutés pour ce projet : vitre, 3 outils sur la tourelle (ébauche T0, finition T11, gorge T10) indexés entre les opérations, colonne lumineuse, options d'automatisation Haas (bras de réglage d'outil séparé de la CAO, récupérateur de pièces, soufflette du mandrin, vérin de porte automatique avec contact porte ouverte, détecteurs mandrin serré / desserré) |
 | Caisses | Construites pour ce projet : bacs plastique 400×600×180 (type KLT) avec nervures, poignées et 12 alvéoles |
 | Pièces | Brut Ø50 × 90 mm → arbre étagé Ø40 / Ø30 (la zone serrée reste brute) |
 | Opérateur | `Pedestrian` (bibliothèque officielle), marche animée par l'automate avec les tables de pas officielles |
 | Atelier | Bardage, poteaux, fermes et luminaires, rack à barres, établi, armoire à outils, deux autres tours |
 
 La géométrie statique est fusionnée par matériau en `IndexedFaceSet` (même méthode que la cellule de palettisation).
+
+### PROTO de machines réutilisables
+
+| PROTO | Contenu | Monde de démo |
+|---|---|---|
+| [`HaasST20.proto`](protos/HaasST20.proto) | Tour Haas ST-20 : `door motor`, `spindle motor`, `jaw 1..3 motor`, `z motor` (533 mm), `x motor` (glissière à 55°), `turret motor` (12 postes), `presetter motor`, `parts catcher motor`, LED de la colonne lumineuse ; options en champs booléens. Généré par [`tools/gen_st20_proto.py`](tools/gen_st20_proto.py) ; la cellule l'utilise pour ses quatre tours | [`haas_st20_demo.wbt`](worlds/haas_st20_demo.wbt) |
+| [`HaasVF1.proto`](protos/HaasVF1.proto) | Centre d'usinage vertical Haas VF-1 d'après le STEP du constructeur ([`tools/haas_vf1_to_meshes.py`](tools/haas_vf1_to_meshes.py)) : `x/y/z motor` (508 × 406 × 508 mm), `spindle motor`, `door left/right motor`, changeur parapluie 20 pots (`carousel slide motor`, `carousel motor`) avec vrai transfert d'outil, palpeur de pièce Renishaw OMP40-2 (simplifié), soufflette, `tableSlot` pour les montages | [`haas_vf1_demo.wbt`](worlds/haas_vf1_demo.wbt) : chargement, serrage, palpage, réglage d'outil, usinage, soufflage, desserrage |
+| [`SchunkKSP3.proto`](protos/SchunkKSP3.proto) | Étau pneumatique SCHUNK KSP3-F 100 / 160 d'après les STEP SCHUNK ([`tools/schunk_ksp3_to_meshes.py`](tools/schunk_ksp3_to_meshes.py)) : moteurs de mors couplés, détection serré / desserré / pièce présente, mors plats ou en V | sur la table de la VF-1 |
+| [`RenishawOTS.proto`](protos/RenishawOTS.proto) | Palpeur d'outil Renishaw OTS (simplifié) | sur la table de la VF-1 |
 
 ## Capteurs
 
@@ -149,6 +158,11 @@ tools/build_media.sh            vidéos, GIF et images -> docs/
 tools/webots_env.sh             choix du Webots (Windows sous WSL, sinon Linux)
 tools/wbtgen.py                 briques de génération communes (fusion de géométrie, profilés alu)
 protos/GuardBay.proto           travée de carter (profilés alu + polycarbonate)
+tools/gen_st20_proto.py         génère protos/HaasST20.proto (mêmes fonctions que gen_world.py)
+tools/haas_vf1_to_meshes.py     STEP Haas VF-1 -> maillages + protos/HaasVF1.proto
+tools/schunk_ksp3_to_meshes.py  STEP SCHUNK KSP3-F -> maillages + protos/SchunkKSP3.proto
+tools/vf1_atc_check.py, tools/vf1_table_check.py   contrôles de jeux VF-1 (changeur d'outils, montages sur la table)
+controllers/st20_demo/, controllers/vf1_demo/      démos autonomes des machines
 ```
 
 L'automate envoie au robot des ordres sous forme de listes d'étapes (JSON, Emitter/Receiver). Chaque étape est un
@@ -188,3 +202,10 @@ contient le fichier STEP d'origine, `protos/meshes/egk40/` la même géométrie 
 Tour Haas ST-20 : maillages simplifiés dérivés du modèle 3D téléchargeable du constructeur (Haas Automation, Inc.,
 haascnc.com ; le STEP d'origine n'est pas inclus). Haas et ST-20 sont des marques de Haas Automation, Inc. Projet
 étudiant indépendant, sans affiliation ni approbation de Haas Automation ; retrait sur simple demande.
+
+Centre d'usinage Haas VF-1 : mêmes conditions (maillages dérivés du modèle 3D téléchargeable du constructeur, STEP
+d'origine non inclus ; VF-1 est une marque de Haas Automation, Inc.).
+
+Modèles CAO SCHUNK KSP3-F 100-AS-PM (ID 1433684) et KSP3-F 160 (ID 1409350) : données CAO CADENAS GmbH, composant
+SCHUNK SE & Co. KG, licence CC BY-ND 4.0 (`protos/meshes/schunk_ksp3/` : géométrie convertie en OBJ, sans modification).
+Renishaw OMP40-2 / OTS : formes simplifiées dessinées pour ce projet d'après les cotes publiques, pas la CAO du fabricant.

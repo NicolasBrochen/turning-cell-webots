@@ -1,0 +1,60 @@
+#VRML_SIM R2025a utf8
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/RectangleArena.proto"
+EXTERNPROTO "../protos/HaasVF1.proto"
+EXTERNPROTO "../protos/SchunkKSP3.proto"
+EXTERNPROTO "../protos/RenishawOTS.proto"
+WorldInfo {
+  info [ "Haas VF-1 vertical machining centre (meshes from the official Haas STEP, tools/haas_vf1_to_meshes.py)"
+         "equipped for robot tending: 2 x SCHUNK KSP3-F 100 pneumatic vices (CAD data: CADENAS GmbH, component: SCHUNK SE & Co. KG, CC BY-ND 4.0),"
+         "Renishaw OMP40-2 spindle probe (T18) + OMM-2 receiver, Renishaw OTS tool setter, Haas auto air gun"
+         "Controller vf1_demo (supervisor): load, clamp, probe, tool setting, machining, air blast, unclamp, unload"
+         "Equipment layout: controllers/vf1_demo/vf1_layout.py (keep in sync with tableSlot below)" ]
+  title "Haas VF-1 demo"
+  basicTimeStep 16
+}
+Viewpoint {
+  orientation -0.1262 0.1938 0.9729 1.1796
+  position -1.35 -2.9 2.05
+  near 0.05
+}
+TexturedBackground {
+  texture "factory"
+}
+TexturedBackgroundLight {
+  texture "factory"
+}
+RectangleArena {
+  floorSize 6 6
+  floorTileSize 1 1
+  wallHeight 0.3
+}
+DEF VF1 HaasVF1 {
+  controller "vf1_demo"
+  supervisor TRUE
+  tools [ 1 3 5 7 10 12 14 16 18 ]
+  spindleTool 1
+  probeTool 18
+  probeReceiver TRUE
+  airGun TRUE
+  tableSlot [
+    DEF VISE_1 SchunkKSP3 {
+      translation -0.15 0 0
+      rotation 0 0 1 1.5708
+      name "vise 1"
+      deviceName "vise 1 "
+      clampWidth 0.05
+    }
+    DEF VISE_2 SchunkKSP3 {
+      translation 0.05 0 0
+      rotation 0 0 1 1.5708
+      name "vise 2"
+      deviceName "vise 2 "
+      clampWidth 0.05
+    }
+    DEF OTS RenishawOTS {
+      translation 0.225 0.125 0
+    }
+  ]
+}

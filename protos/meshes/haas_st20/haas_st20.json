@@ -255,6 +255,32 @@
    "triangles": 88,
    "vertices": 114
   },
+  "st20_presetter_steel.obj": {
+   "bbox_group_frame": [
+    [
+     -0.0715,
+     -0.0667,
+     -0.0273
+    ],
+    [
+     0.1659,
+     0.0476,
+     0.4255
+    ]
+   ],
+   "bytes": 214615,
+   "colour": [
+    0.7,
+    0.71,
+    0.73
+   ],
+   "group": "presetter",
+   "material": "steel",
+   "part": "",
+   "transparency": 0.0,
+   "triangles": 2784,
+   "vertices": 2784
+  },
   "st20_spindle.obj": {
    "bbox_group_frame": [
     [
@@ -372,7 +398,7 @@
      1.7606
     ]
    ],
-   "bytes": 945107,
+   "bytes": 708169,
    "colour": [
     0.7,
     0.71,
@@ -382,8 +408,8 @@
    "material": "steel",
    "part": "",
    "transparency": 0.0,
-   "triangles": 11272,
-   "vertices": 12007
+   "triangles": 8488,
+   "vertices": 9223
   },
   "st20_static_white.obj": {
    "bbox_group_frame": [
@@ -554,6 +580,35 @@
     1.1
    ],
    "origin_def": "same as spindle (child of the spindle)"
+  },
+  "presetter": {
+   "axis": [
+    -0.5737,
+    0.0,
+    0.8191
+   ],
+   "deployed": 1.5708,
+   "joint": "revolute",
+   "note": "CAD pose = stowed (arm up beside the chuck, tip in its guard); +90 deg about the axis brings the stylus tip in front of the chuck, in the plane swept by the tool tips (spindle axis + X slide)",
+   "origin": [
+    -0.3237,
+    -0.4438,
+    0.8749
+   ],
+   "origin_def": "point of the rotary actuator axis (largest cylinder of the hub parallel to the X slide)",
+   "stowed": 0.0,
+   "stylus_tip_deployed": [
+    -0.4274,
+    -0.1447,
+    1.1391
+   ],
+   "stylus_tip_deployed_off_tool_plane": 0.0,
+   "stylus_tip_deployed_x_from_spindle_axis": 0.0478,
+   "stylus_tip_stowed": [
+    -0.2371,
+    -0.5105,
+    1.2724
+   ]
   },
   "spindle": {
    "axis": [

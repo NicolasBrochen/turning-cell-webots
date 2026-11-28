@@ -17,7 +17,8 @@ Frames
 
 Groups: static, door (prismatic, -y_l), spindle (revolute about y_l), jaws (jaw_1..3, prismatic radial, same frame
 as spindle), turret (cross slide + BOT turret, X slide along the slant, disc indexes about y_l), carriage (Z saddle,
-prismatic along y_l). Deterministic: same input -> byte-identical output.
+prismatic along y_l), presetter (automatic tool presetter arm, stowed in the CAD pose, revolute about the axis of
+its rotary actuator, parallel to the X slide). Deterministic: same input -> byte-identical output.
 """
 import argparse
 import json
@@ -121,6 +122,9 @@ RULES = [
     (r"^Base Casting", "static", "grey", "", 4.0, 0.8),
     (r"^Tailstock and Sub Spindle Rails.* / SS linear rail", "static", "steel", "", None, None),
     (r"^Tailstock and Sub Spindle Rails", "static", "grey", "", None, None),
+    # automatic tool presetter: hub + arm + head + stylus swing about the rotary actuator axis (group "presetter");
+    # base housing, mounting plate and tip guard stay on the headstock
+    (r"^Tool Setting Probe\(Default\) / Tool Probe assembly / (tre|kj)( |$)", "presetter", "steel", "", 3.0, 0.8),
     (r"^Tool Setting Probe", "static", "steel", "", 3.0, 0.8),
     (r"^ST-20 Tailstock Option", "static", "grey", "", None, None),
     (r"^ST-20 Reboot Chip Conveyor", "static", "grey", "", None, None),
@@ -142,6 +146,8 @@ OPENING_RIGHT_RE = r"^Enclosure\(Default\) / Front Right outside panel"
 OPENING_BOTTOM_RE = r"^Enclosure\(Default\) / (front tray|door tray1)"
 X_RAIL_RE = r"^Z Axis Assembly / 50-0044_01"
 PENDANT_RE = r"^Enclosure\(Default\) / Control"
+PRESETTER_RE = r"^Tool Setting Probe\(Default\) / Tool Probe assembly / (tre|kj)( |$)"
+PRESETTER_STYLUS_RE = r"^Tool Setting Probe\(Default\) / Tool Probe assembly / kj"
 
 
 # ----------------------------------------------------------------------------------------------- STEP reading
@@ -428,6 +434,19 @@ def main():
         dy, dz = -dy, -dz                                    # +X = upwards (away from the spindle)
     slant_deg = math.degrees(math.atan2(dy, abs(dz)))
 
+    # presetter pivot: axis of the largest cylindrical face of the arm parts that is parallel to the X slide
+    best = None
+    for it in find(PRESETTER_RE):
+        for f in faces_of(it["shape"]):
+            a = BRepAdaptor_Surface(f)
+            if a.GetType() == GeomAbs_Cylinder:
+                ax = a.Cylinder().Axis()
+                d = ax.Direction()
+                if abs(d.Y() * dy + d.Z() * dz) > 0.999 and (best is None or a.Cylinder().Radius() > best[0]):
+                    best = (a.Cylinder().Radius(), ax.Location())
+    pv = best[1]
+    stylus_lo, stylus_hi = bbox_mm(find(PRESETTER_STYLUS_RE)[0]["shape"])
+
     # ---- frames (lathe local frame, m)
     sp_origin = to_lathe((face_x / 1000, spindle_yz[0] / 1000, spindle_yz[1] / 1000))
     tu_origin = to_lathe((t_hi[0] / 1000, turret_yz[0] / 1000, turret_yz[1] / 1000))
@@ -512,7 +531,8 @@ def main():
                               grip_radius=round(rmin, 4), outer_radius=round(rmax, 4)))
 
     origins = {"static": (0.0, 0.0, 0.0), "spindle": sp_origin, "jaws": sp_origin,
-               "turret": tu_origin, "carriage": tu_origin}
+               "turret": tu_origin, "carriage": tu_origin,
+               "presetter": to_lathe((pv.X() / 1000, pv.Y() / 1000, pv.Z() / 1000))}
     door_pts = [p for (g, _, _), tl in buckets.items() if g == "door" for t, _ in tl for p in t]
     door_lo = [min(p[i] for p in door_pts) for i in range(3)]
     door_hi = [max(p[i] for p in door_pts) for i in range(3)]
@@ -580,6 +600,16 @@ def main():
     xs = (dy, dz)                                           # +X in STEP (y, z)
     x_dir_l = [round(xs[1], 4), 0.0, round(xs[0], 4)]      # rotation only: (x_l, y_l, z_l) = (z_h, x_h, y_h)
     turret_x_from_axis = math.hypot(tu_origin[0] - sp_origin[0], tu_origin[2] - sp_origin[2])
+    # stylus tip (end of the stylus towards -y_l in the stowed pose) and its position after a +90 deg swing
+    tip = to_lathe(((stylus_lo[0]) / 1000, (stylus_lo[1] + stylus_hi[1]) / 2000, (stylus_lo[2] + stylus_hi[2]) / 2000))
+    pa = origins["presetter"]
+    ax_ = x_dir_l
+    v = [tip[i] - pa[i] for i in range(3)]
+    al = sum(v[i] * ax_[i] for i in range(3))
+    pp = [v[i] - al * ax_[i] for i in range(3)]
+    cr = [ax_[1] * pp[2] - ax_[2] * pp[1], ax_[2] * pp[0] - ax_[0] * pp[2], ax_[0] * pp[1] - ax_[1] * pp[0]]
+    tip_dep = [pa[i] + al * ax_[i] + cr[i] for i in range(3)]
+    rel = [tip_dep[0] - sp_origin[0], tip_dep[2] - sp_origin[2]]
 
     meta = dict(
         source=os.path.basename(args.step),
@@ -618,6 +648,15 @@ def main():
                           "(so the turret can be a child of the carriage with zero offset)",
                           joint="prismatic", axis=[0, 1, 0],
                           note="Z saddle with its X rails/trucks/top covers; telescopic Z covers are static"),
+            presetter=dict(origin=rnd(origins["presetter"]), origin_def="point of the rotary actuator axis (largest "
+                           "cylinder of the hub parallel to the X slide)", joint="revolute", axis=x_dir_l,
+                           stowed=0.0, deployed=round(math.pi / 2, 4), stylus_tip_stowed=rnd(tip),
+                           stylus_tip_deployed=rnd(tip_dep),
+                           stylus_tip_deployed_x_from_spindle_axis=round(rel[0] * x_dir_l[0] + rel[1] * x_dir_l[2], 4),
+                           stylus_tip_deployed_off_tool_plane=round(-rel[0] * x_dir_l[2] + rel[1] * x_dir_l[0], 4),
+                           note="CAD pose = stowed (arm up beside the chuck, tip in its guard); +90 deg about the "
+                                "axis brings the stylus tip in front of the chuck, in the plane swept by the tool "
+                                "tips (spindle axis + X slide)"),
         ),
         key_positions=dict(
             spindle_axis_xz=rnd([sp_origin[0], sp_origin[2]]),

@@ -1,0 +1,58 @@
+#VRML_SIM R2025a utf8
+# license: procedural model (no CAD), approximate dimensions from the Renishaw OTS data sheet
+# Renishaw OTS optical tool setter (battery powered, IR link to the OMM-2 / OMI-2 receiver), procedural.
+# Origin on the surface it stands on (table top), z up; the IR window faces +x (turn the node with `rotation`).
+# Approximate geometry: mounting flange D70 x 8 mm, body D62 x 60 mm, stylus holder and break stem, D25 x 5 mm
+# disc stylus: disc top at stylusTop = 0.098 m above the origin, centred on the vertical axis.
+# The tool setter is passive here: the controller touches the disc with the tool and lights the LED (ledColor, live).
+
+PROTO RenishawOTS [
+  field SFVec3f    translation  0 0 0
+  field SFRotation rotation     0 0 1 0
+  field SFString   name         "Renishaw OTS"
+  field SFColor    ledColor     0 0 0     # LED / window glow (green = ready, red = triggered)
+]
+{
+  Solid {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    model "Renishaw OTS"
+    children [
+      Pose {
+        translation 0 0 0.004
+        children [ Shape { appearance DEF OTS_DARK PBRAppearance { baseColor 0.12 0.13 0.15 roughness 0.4 metalness 0.5 } geometry Cylinder { height 0.008 radius 0.035 subdivision 32 } } ]
+      }
+      Pose {
+        translation 0 0 0.038
+        children [ Shape { appearance DEF OTS_BODY PBRAppearance { baseColor 0.16 0.22 0.36 roughness 0.35 metalness 0.3 } geometry Cylinder { height 0.060 radius 0.031 subdivision 36 } } ]
+      }
+      Pose {
+        translation 0.0295 0 0.040
+        children [ Shape { appearance PBRAppearance { baseColor 0.3 0.04 0.05 roughness 0.1 metalness 0 transparency 0.2 emissiveColor IS ledColor emissiveIntensity 4 } geometry Box { size 0.006 0.034 0.024 } } ]
+      }
+      Pose {
+        translation 0 0 0.0705
+        children [ Shape { appearance USE OTS_DARK geometry Cylinder { height 0.005 radius 0.020 subdivision 24 } } ]
+      }
+      Pose {
+        translation 0 0 0.0795
+        children [ Shape { appearance DEF OTS_STEEL PBRAppearance { baseColor 0.7 0.71 0.73 roughness 0.3 metalness 0.85 } geometry Cylinder { height 0.013 radius 0.005 subdivision 16 } } ]
+      }
+      Pose {
+        translation 0 0 0.0895
+        children [ Shape { appearance USE OTS_STEEL geometry Cylinder { height 0.007 radius 0.0025 subdivision 12 } } ]
+      }
+      Pose {
+        translation 0 0 0.0955
+        children [ Shape { appearance PBRAppearance { baseColor 0.55 0.56 0.58 roughness 0.25 metalness 0.9 } geometry Cylinder { height 0.005 radius 0.0125 subdivision 32 } } ]
+      }
+    ]
+    boundingObject Group {
+      children [
+        Pose { translation 0 0 0.034 children [ Cylinder { height 0.068 radius 0.035 } ] }
+        Pose { translation 0 0 0.0835 children [ Cylinder { height 0.029 radius 0.0125 } ] }
+      ]
+    }
+  }
+}

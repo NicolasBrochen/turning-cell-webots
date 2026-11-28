@@ -6,6 +6,11 @@ Two clearly separated parts:
   * CONTROL: lathe state machines, robot job scheduling (dual gripper: unload the finished part and load the
     blank in the same visit), robot/machine handshakes (chuck clamp/open), safety (laser scanners with speed
     and separation monitoring, emergency stop, door interlocks).
+  * Haas automation options of the HaasST20 PROTO: auto door with its "door completely open" limit switch (the robot
+    is only sent into a lathe while the switch is made, the chuck air jet is off and the tool presetter arm and the
+    parts catcher are stowed), auto air jet (M12/M13) blowing the chuck while the door opens before every robot visit
+    (no extra time), hydraulic chuck clamped / unclamped proximity switches (lamps), tool presetter and parts catcher
+    kept stowed (the robot unloads the parts).
 
 Keys (3D view focused): E = emergency stop (toggle), R = reset, P = operator walks in to swap the crates,
 S = end-of-cycle stop. The same letters can be written into the customData field of the "automate cellule" robot.
@@ -40,7 +45,7 @@ JAW_R0 = 0.0255                        # jaw gripping radius in the CAD pose (ja
 TUR0 = (-0.6622, 0.3151, 1.474)        # carriage / turret origin in the CAD pose (turret axis, disc +y face)
 X_DIR = (-0.5737, 0.0, 0.8191)         # X cross slide (55° slant): +X = away from the spindle
 TUR_AXIS_R = 0.4568                    # turret axis to spindle axis distance in the CAD pose
-TOOL_R, TOOL_DY = 0.305, -0.128        # tool tip: distance from the turret axis towards the spindle, axial offset
+TOOL_R, TOOL_DY = 0.305, -0.140        # tool tip: distance from the turret axis towards the spindle, axial offset
 TUR_PARK = (0.0, 0.0)                  # rest position (carriage Z along +y, X slide) from the CAD pose
 PARK_Y = TUR0[1] + TUR_PARK[0] + TOOL_DY          # tool tip at rest: axial position (lathe y) ...
 PARK_R = TUR_AXIS_R - TOOL_R + TUR_PARK[1]        # ... and distance from the spindle axis
@@ -49,7 +54,20 @@ CUT_Y1 = CUT_Y0 - 0.045                           # ... to the end of the stock 
 CUT_R = (0.0125, 0.0185)                          # finished radii: back step (y > CUT_STEP), front step
 CUT_STEP = CUT_Y0 - 0.02                          # shoulder between the two steps
 SPIN = 9.0                         # rad/s (visual spindle speed)
-T_CUT = 16.0                       # s, turning pass
+T_CUT = 16.0                       # s, machining time (rapids + roughing + finishing + grooving + tool changes)
+# turret tools (12 stations every pi/6, station k in the working position at k * pi/6), see tools/gen_world.py
+TOOL_STATIONS = (("ebauche", 0), ("finition", 11), ("gorge", 10))
+TOOL = {name: k for name, k in TOOL_STATIONS}
+T_INDEX = 0.5                      # s per station (turret indexing)
+CLEAR_Y = CUT_Y0 + 0.05            # clearance / tool-change point: every tool 50 mm in front of the part's free end
+CLEAR_R = PARK_R                   # ... and at the rest radius (turret axis 0.457 m from the spindle axis)
+ROUGH_ALLOW = 0.0005               # radial stock left by the roughing pass for the finishing pass
+GROOVE_Y = CUT_Y1 + 0.003          # relief groove (3 mm insert) at the end of the turned diameter, 6 mm from the jaws
+GROOVE_R = 0.016                   # groove bottom radius (turned diameter radius CUT_R[1] = 0.0185)
+COOLANT_ON = 0.45                  # coolant jet transparency (PROTO field coolantTransparency), 1 = off
+AIR_ON = 0.6                       # air jet transparency (PROTO field airJetTransparency), 1 = off
+AIR_START = 1.5                    # s, chuck blown at start-up (doors open, before the robot is ready)
+DOOR_SW_PRETRAVEL = 0.008          # m, the "door completely open" switch is made over the last 8 mm of the door stroke
 SCAN_PROT = (-0.8, 0.8, 1.40, 2.0)  # x limited to the lathe facade planes (lathe A coolant tank / conveyor at x -0.85)
 SCAN_WARN = (-0.8, 0.8, 2.0, 2.8)
 OPERATOR_HOME = (3.6, 3.55)
@@ -134,20 +152,91 @@ def axis_angle(m):
     return [(m[2][1] - m[1][2]) / s, (m[0][2] - m[2][0]) / s, (m[1][0] - m[0][1]) / s, a]
 
 
+def station_angle(k):
+    """Turret joint angle that brings station k into the working position, in ]-pi, pi]."""
+    a = k * math.pi / 6
+    return a - 2 * math.pi if a > math.pi else a
+
+
+def profile_r(y, allow=0.0):
+    """Finished radius of the part at axial position y (two steps, 2 mm shoulder ramp), plus a radial allowance."""
+    return CUT_R[0] + (CUT_R[1] - CUT_R[0]) * max(0.0, min(1.0, (CUT_STEP - y) / 0.002)) + allow
+
+
+def machining_program():
+    """Turret program of one part as (duration, segment) pairs, played by Lathe.machining once the door is locked;
+    it fits in the former single-tool timing (spindle at speed until T_CUT + 3.5 s), so the lathe cycle and the robot
+    windows are unchanged. Segments: ("move", (y0, r0), (y1, r1), station, coolant) linear move of the tool tip
+    (axial position y, radius r), ("pass", station, allowance) turning pass along the profile from CUT_Y0 to CUT_Y1,
+    ("index", k0, k1) turret indexing at the clearance point (T_INDEX per station, coolant off)."""
+    clear = (CLEAR_Y, CLEAR_R)
+    park = (PARK_Y, PARK_R)
+    r0 = PART_R + 0.002
+    t_rough, t_finish = 7.0, 4.0
+    k_r, k_f, k_g = TOOL["ebauche"], TOOL["finition"], TOOL["gorge"]
+    steps = lambda k0, k1: abs(round((station_angle(k1) - station_angle(k0)) / (math.pi / 6)))  # noqa: E731
+    out1 = lambda r: (CUT_Y1, r + 0.006)  # noqa: E731   radial retract first, clear of the turned diameter
+    return [
+        (1.2, ("move", park, clear, k_r, False)),
+        (0.3, ("move", clear, (CUT_Y0, r0), k_r, False)),
+        (t_rough, ("pass", k_r, ROUGH_ALLOW)),                        # roughing (stock removal, coolant)
+        (0.15, ("move", (CUT_Y1, profile_r(CUT_Y1, ROUGH_ALLOW)), out1(CUT_R[1]), k_r, False)),
+        (0.25, ("move", out1(CUT_R[1]), clear, k_r, False)),
+        (T_INDEX * steps(k_r, k_f), ("index", k_r, k_f)),              # roughing -> finishing tool
+        (0.3, ("move", clear, (CUT_Y0 + 0.001, CUT_R[0]), k_f, False)),
+        (t_finish, ("pass", k_f, 0.0)),                                # finishing pass on the profile
+        (0.15, ("move", (CUT_Y1, CUT_R[1]), out1(CUT_R[1]), k_f, False)),
+        (0.25, ("move", out1(CUT_R[1]), clear, k_f, False)),
+        (T_INDEX * steps(k_f, k_g), ("index", k_f, k_g)),              # finishing -> grooving tool
+        (0.3, ("move", clear, (GROOVE_Y, CUT_R[1] + 0.003), k_g, False)),
+        (1.0, ("move", (GROOVE_Y, CUT_R[1] + 0.003), (GROOVE_Y, GROOVE_R), k_g, True)),   # plunge (coolant)
+        (0.3, ("move", (GROOVE_Y, GROOVE_R), (GROOVE_Y, GROOVE_R), k_g, True)),           # dwell at the bottom
+        (0.4, ("move", (GROOVE_Y, GROOVE_R), (GROOVE_Y, CUT_R[1] + 0.006), k_g, False)),
+        (0.3, ("move", (GROOVE_Y, CUT_R[1] + 0.006), clear, k_g, False)),
+        (T_INDEX * steps(k_g, k_r), ("index", k_g, k_r)),              # back to the roughing tool for the next part
+        (1.5, ("move", clear, park, k_r, False)),
+    ]
+
+
+PROGRAM = machining_program()
+ROUGH_SEG = 2                                               # index of the roughing pass in PROGRAM
+assert sum(d for d, _ in PROGRAM) <= T_CUT + 3.5 + 1e-9     # turret at rest before the spindle stops / door opens
+
+
 class Lathe:
     def __init__(self, plc, name):
         self.plc, self.name = plc, name
-        g = plc.getFromDef
-        p = "TOUR_" + name
+        # HaasST20 PROTO instance: the PLC drives its internal joints (internal DEFs, setJointPosition in joint
+        # coordinates, see protos/HaasST20.proto), its stack light lamps and coolant jet through the PROTO fields
+        self.node = plc.getFromDef("TOUR_" + name)
+        pd = self.node.getFromProtoDef
         self.x0, self.yaw = LATHES[name]
         self.R = rz(self.yaw)
-        self.door = g(p + "_DOOR")
-        self.chuck = g(p + "_CHUCK")
-        self.jaws = [g("%s_JAW%d" % (p, i)) for i in (1, 2, 3)]
-        self.carriage = g(p + "_CARRIAGE")
-        self.turret = g(p + "_TURRET")
-        self.coolant = g(p + "_COOLANT")
-        self.lamps = {c: g("%s_L%s" % (p, c)) for c in "GOR"}
+        self.door = pd("DOOR_JOINT")
+        self.spindle = pd("SPINDLE_JOINT")
+        self.jaws = [pd("JAW%d_JOINT" % i) for i in (1, 2, 3)]
+        self.zaxis = pd("Z_JOINT")
+        self.xaxis = pd("X_JOINT")
+        self.turret = pd("TURRET_JOINT")
+        self.coolant = self.node.getField("coolantTransparency")
+        # Haas options: door (end point, read back by the "door open" limit switch), air jet, switch lamps, tool
+        # presetter arm and parts catcher (None when the option is not fitted), kept stowed
+        self.door_solid = pd("DOOR")
+        self.air = self.node.getField("airJetTransparency")
+        self.sw_lamps = {k: self.node.getField(f) for k, f in (("door", "doorOpenLight"), ("clamped", "chuckClampedLight"),
+                                                               ("unclamped", "chuckUnclampedLight"))}
+        self.sw_on = {}
+        self.air_on = None
+        self.stowed = []
+        for jd, sd in (("PRESETTER_JOINT", "PRESETTER"), ("CATCHER_JOINT", "PARTS_CATCHER")):
+            j = pd(jd)
+            if j:
+                j.setJointPosition(0.0)
+                self.stowed.append((jd, pd(sd), None))
+        self.lamps = {c: self.node.getField(f) for c, f in (("G", "greenLight"), ("O", "orangeLight"), ("R", "redLight"))}
+        self.lamp_on = {}
+        self.coolant_on = None
+        self.tool = None                # station in the working position (None while indexing)
         self.state = "empty"           # empty | robot | closing | cutting | opening | done
         self.part = None               # DEF of the part in the chuck
         self.finished = False
@@ -161,6 +250,8 @@ class Lathe:
         self.cycles = 0
         self.set_door(1.0)
         self.set_jaws(0.05)
+        self.set_tool(TOOL["ebauche"])
+        self.set_turret(PARK_Y, PARK_R)
 
     # -- frames
     def world(self, p):
@@ -173,13 +264,13 @@ class Lathe:
     # -- actuators
     def set_door(self, s):
         """s = 0 closed, 1 open: the door slides along -y (towards the headstock)."""
-        self.door.getField("translation").setSFVec3f([DOOR_CLOSED[0], DOOR_CLOSED[1] - DOOR_TRAVEL * s,
-                                                      DOOR_CLOSED[2]])
+        self.door.setJointPosition(DOOR_TRAVEL * s)
 
     def set_jaws(self, r):
         """Jaw inner radius r: each jaw slides along its radial direction from the CAD pose (radius JAW_R0)."""
-        for j, (dx, dz) in zip(self.jaws, JAW_DIRS):
-            j.getField("translation").setSFVec3f([dx * (r - JAW_R0), 0.0, dz * (r - JAW_R0)])
+        q = max(-0.0155, min(0.0245, r - JAW_R0))          # joint stops of the PROTO (radius 0.010 .. 0.050)
+        for j in self.jaws:
+            j.setJointPosition(q)
 
     def set_turret(self, y_tip, r_tip):
         """Tool tip at axial position y_tip (lathe y) and at r_tip from the spindle axis: the carriage moves along y
@@ -187,12 +278,63 @@ class Lathe:
         the spindle axis."""
         z = y_tip - TUR0[1] - TOOL_DY
         x = r_tip - (TUR_AXIS_R - TOOL_R)
-        self.carriage.getField("translation").setSFVec3f([TUR0[0], TUR0[1] + z, TUR0[2]])
-        self.turret.getField("translation").setSFVec3f([x * X_DIR[0], 0.0, x * X_DIR[2]])
+        self.zaxis.setJointPosition(z)
+        self.xaxis.setJointPosition(x)
+
+    def set_index(self, angle):
+        """Turret joint angle (station k in the working position at station_angle(k))."""
+        self.turret.setJointPosition(angle)
+
+    def set_air(self, on):
+        """Auto air jet (M12 on / M13 off) aimed at the chuck."""
+        if on != self.air_on:
+            self.air_on = on
+            self.air.setSFFloat(AIR_ON if on else 1.0)
+
+    def sw_lamp(self, k, on, col):
+        if self.sw_on.get(k) != on:
+            self.sw_on[k] = on
+            self.sw_lamps[k].setSFColor(col if on else [0, 0, 0])
+
+    def door_open_switch(self):
+        """"Door completely open" limit switch, actuated by the door lug over the last DOOR_SW_PRETRAVEL of the stroke:
+        reads the actual door position (end point of DOOR_JOINT) in the lathe frame."""
+        p = self.door_solid.getPosition()
+        y = mv([[self.R[j][i] for j in range(3)] for i in range(3)], [p[0] - self.x0, p[1], p[2]])[1]
+        return DOOR_CLOSED[1] - y >= DOOR_TRAVEL - DOOR_SW_PRETRAVEL
+
+    def options_stowed(self):
+        """Tool presetter arm and parts catcher in their stowed pose (orientation of their end points unchanged)."""
+        ok = True
+        for i, (jd, sol, r0) in enumerate(self.stowed):
+            r = sol.getOrientation()
+            if r0 is None:
+                self.stowed[i] = (jd, sol, list(r))
+            elif max(abs(a - b) for a, b in zip(r, r0)) > 1e-3:
+                ok = False
+        return ok
+
+    def entry_permitted(self):
+        """Robot entry interlock: door completely open (limit switch), air jet off, presetter and catcher stowed."""
+        return self.door_open_switch() and not self.air_on and self.options_stowed()
+
+    def chuck_switches(self):
+        """Hydraulic chuck proximity switches (draw tube position): clamped on the part / fully unclamped."""
+        clamped = abs(self.jaw_r - self.jaw_target) <= 1e-4 and self.jaw_target < 0.05
+        self.sw_lamp("clamped", clamped, [0, 1, 0])
+        self.sw_lamp("unclamped", self.jaw_r >= 0.05 - 1e-4, [1, 0.55, 0])
+        return clamped
+
+    def set_coolant(self, on):
+        if on != self.coolant_on:
+            self.coolant_on = on
+            self.coolant.setSFFloat(COOLANT_ON if on else 1.0)
 
     def lamp(self, c, on):
-        col = {"G": [0, 1, 0], "O": [1, 0.55, 0], "R": [1, 0, 0]}[c]
-        self.lamps[c].getField("emissiveColor").setSFColor(col if on else [0, 0, 0])
+        if self.lamp_on.get(c) != on:
+            self.lamp_on[c] = on
+            col = {"G": [0, 1, 0], "O": [1, 0.55, 0], "R": [1, 0, 0]}[c]
+            self.lamps[c].setSFColor(col if on else [0, 0, 0])
 
     def part_pose(self):
         """World pose of a part seated in the chuck (part axis = lathe +y), spinning with the chuck."""
@@ -228,15 +370,74 @@ class Lathe:
         self.state, self.t = "closing", 0.0
         self.plc.log("Lathe %s: door closing, cycle start" % self.name)
 
+    def machining(self, t):
+        """Play the turret program (machining_program) at time t after the door was locked: roughing (stock sleeve
+        shortening), tool change, finishing, tool change, grooving, tool change back to roughing, rest position."""
+        t0, i = 0.0, 0
+        while i < len(PROGRAM) and t >= t0 + PROGRAM[i][0]:
+            t0 += PROGRAM[i][0]
+            i += 1
+        if i > ROUGH_SEG and not self.finished and self.part:       # roughing done: finished outer diameter
+            self.finished = True
+            self.plc.getFromDef(self.part.replace("PART", "PBO")).getField("radius").setSFFloat(0.015)
+        if i == len(PROGRAM):                                        # program over: rest position, roughing tool
+            self.set_coolant(False)
+            self.set_tool(TOOL["ebauche"])
+            self.set_turret(PARK_Y, PARK_R)
+            return
+        d, seg = PROGRAM[i]
+        s = (t - t0) / d
+        kind = seg[0]
+        if kind == "index":
+            self.set_coolant(False)
+            if self.tool is not None:
+                self.plc.log("Lathe %s: turret indexing T%d -> T%d (%s)" % (
+                    self.name, seg[1], seg[2], [n for n, k in TOOL_STATIONS if k == seg[2]][0]))
+            self.tool = None
+            a0, a1 = station_angle(seg[1]), station_angle(seg[2])
+            self.set_index(a0 + (a1 - a0) * (0.5 - 0.5 * math.cos(math.pi * s)))
+            return
+        if kind == "move":
+            _, (y0, r0), (y1, r1), k, cool = seg
+            self.set_tool(k)
+            self.set_turret(y0 + (y1 - y0) * s, r0 + (r1 - r0) * s)
+            self.set_coolant(cool)
+            return
+        # turning pass along the profile from the part's free end towards the jaws
+        _, k, allow = seg
+        self.set_tool(k)
+        y = CUT_Y0 + (CUT_Y1 - CUT_Y0) * s
+        r_in = PART_R + 0.002 if k == TOOL["ebauche"] else CUT_R[0]
+        self.set_turret(y, r_in + (profile_r(y, allow) - r_in) * min(1.0, s / 0.03))
+        self.set_coolant(True)
+        if k == TOOL["ebauche"]:
+            self.cut = s
+            sl = self.part and self.plc.getFromDef(self.part.replace("PART", "SLV"))
+            if sl:
+                s_ = max(0.001, 1.0 - s)
+                sl.getField("scale").setSFVec3f([1, 1, s_])
+                sl.getField("translation").setSFVec3f([0, 0, 0.0225 * s_])
+
+    def set_tool(self, k):
+        """Station k in the working position (end of an indexing, or initial state)."""
+        if self.tool != k:
+            self.tool = k
+            self.set_index(station_angle(k))
+
     def update(self, dt, running):
         # jaws
         if abs(self.jaw_r - self.jaw_target) > 1e-4:
             self.jaw_r += max(-0.05 * dt, min(0.05 * dt, self.jaw_target - self.jaw_r))
             self.set_jaws(self.jaw_r)
+        self.chuck_switches()
+        self.sw_lamp("door", self.door_open_switch(), [0, 1, 0])
         if not running:
-            self.coolant.getField("scale").setSFVec3f([1, 1, 0.001])
+            self.set_coolant(False)
+            self.set_air(False)
             return
         st = self.state
+        if st == "empty" and self.air_on is not False:              # start-up: blow the open chuck once
+            self.set_air(self.plc.getTime() < AIR_START)
         if st in ("closing", "cutting", "opening"):
             self.t += dt
         if st == "closing":
@@ -248,44 +449,23 @@ class Lathe:
         elif st == "cutting":
             t = self.t
             self.spin = min(SPIN, SPIN * t / 1.0) if t < T_CUT + 3.5 else max(0.0, SPIN * (T_CUT + 4.5 - t))
-            # turret: approach 1.5 s (tool tip to the outer diameter at the part's free end), turning pass T_CUT
-            # towards the jaws along the stepped profile, retract 1.5 s back to the rest position
-            r0 = PART_R + 0.002
-            if t < 1.5:
-                s = t / 1.5
-                self.set_turret(PARK_Y + (CUT_Y0 - PARK_Y) * s, PARK_R + (r0 - PARK_R) * s)
-            elif t < 1.5 + T_CUT:
-                self.cut = (t - 1.5) / T_CUT
-                y = CUT_Y0 + (CUT_Y1 - CUT_Y0) * self.cut
-                rc = CUT_R[0] + (CUT_R[1] - CUT_R[0]) * max(0.0, min(1.0, (CUT_STEP - y) / 0.002))   # shoulder
-                self.set_turret(y, r0 + (rc - r0) * min(1.0, self.cut / 0.03))
-                self.coolant.getField("scale").setSFVec3f([1, 1, 1])
-                n = self.plc.getFromDef(self.part)
-                sl = n and self.plc.getFromDef(self.part.replace("PART", "SLV"))
-                if sl:
-                    s_ = max(0.001, 1.0 - self.cut)
-                    sl.getField("scale").setSFVec3f([1, 1, s_])
-                    sl.getField("translation").setSFVec3f([0, 0, 0.0225 * s_])
-            elif t < 3.0 + T_CUT:
-                if not self.finished:
-                    self.finished = True
-                    self.plc.getFromDef(self.part.replace("PART", "PBO")).getField("radius").setSFFloat(0.015)
-                self.coolant.getField("scale").setSFVec3f([1, 1, 0.001])
-                s = (t - 1.5 - T_CUT) / 1.5
-                self.set_turret(CUT_Y1 + (PARK_Y - CUT_Y1) * s, CUT_R[1] + (PARK_R - CUT_R[1]) * s)
-            elif t >= T_CUT + 4.5:
+            self.machining(t)
+            if t >= T_CUT + 4.5:
                 self.spin = 0.0
                 self.state, self.t = "opening", 0.0
                 self.cycles += 1
                 self.plc.log("Lathe %s: part turned, door opening" % self.name)
             self.angle = (self.angle + self.spin * dt) % (2 * math.pi)
-            self.chuck.getField("rotation").setSFRotation([0, 1, 0, self.angle])
+            self.spindle.setJointPosition(self.angle)
             self.place_part()
         elif st == "opening":
             self.door_y = min(1.0, self.t / 2.0)
             self.set_door(self.door_y)
-            if self.door_y >= 1.0:
+            self.set_air(True)                       # M12: blow chips / coolant off the chuck and the part while opening
+            if self.door_y >= 1.0 and self.door_open_switch():
+                self.set_air(False)                  # M13
                 self.state = "done"
+                self.plc.log("Lathe %s: chuck blown (air jet), door open switch made" % self.name, overlay=False)
         # stack light
         self.lamp("G", st in ("closing", "cutting", "opening"))
         self.lamp("O", st in ("done", "empty", "robot"))
@@ -337,9 +517,11 @@ class CellPLC(Supervisor):
         self.init_collisions()
 
     # ------------------------------------------------------------------ utilities
-    def log(self, msg):
+    def log(self, msg, overlay=True):
         line = "[%6.1f s] %s" % (self.getTime(), msg)
         print(line)
+        if not overlay:                         # option events: console only (the video overlays stay unchanged)
+            return
         self.log_lines = (self.log_lines + [line])[-2:]
         if "--sans-ihm" in sys.argv:            # README videos: no overlay
             return
@@ -439,7 +621,7 @@ class CellPLC(Supervisor):
                 self.request_swap("blank crate empty")
             return
         # holding a blank: serve a lathe that is waiting (finished part first)
-        ready = [lt for lt in self.lathes.values() if lt.state in ("done", "empty")]
+        ready = [lt for lt in self.lathes.values() if lt.state in ("done", "empty") and lt.entry_permitted()]
         if not ready:
             return
         ready.sort(key=lambda lt: 0 if lt.state == "done" else 1)

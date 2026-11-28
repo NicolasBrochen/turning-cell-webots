@@ -6,7 +6,7 @@
 - Décisions déjà prises : {{ex. socle de 95 mm ; face du mandrin à y = -0.40 ; LATHE_X inchangé}}.
 
 **Travail :**
-1. Géométrie dans `tools/gen_world.py`, avec les mêmes DEF. Si un nouveau corps mobile est ajouté ({{ex. TOUR_x_CARRIAGE}}), l'ajouter aussi dans CLAUDE.md.
+1. Géométrie dans `tools/gen_world.py`, avec les mêmes DEF. Si un nouveau corps mobile est ajouté ({{ex. un nouveau joint interne du PROTO HaasST20 avec son DEF}}), l'ajouter aussi dans CLAUDE.md.
 2. Volumes de collision en boîtes ou cylindres, avec les mêmes propriétaires et étiquettes.
 3. Animation dans `cell_plc.py` : {{mouvements, axes, courses}}. Conserver les durées de la séquence.
 4. Implantation : conflits d'encombrement, avec une vue de dessus dans le scratchpad.
